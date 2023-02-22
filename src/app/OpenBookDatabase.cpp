@@ -264,48 +264,57 @@ bool OpenBookDatabase::bookIsPaginated(BookRecord record) {
     return this->_getPaginationFile(record, paginationFilename);
 }
 
+/**
+ * Paginates a provided BookRecord by ... 
+ *  and outputing a pagination file in the same directory the BookRecord is found in.
+ *  The paginations file is a .pag binary file containing a header of metadata,
+ *   
+ * 
+ * @param record The BookRecord to be paginated
+*/
 void OpenBookDatabase::paginateBook(BookRecord record) {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    BookPaginationHeader header = {0};
     File paginationFile;
     char paginationFilename[128];
 
-    // to start with, write the empty header just as a placeholder
-    if (this->_getPaginationFile(record, paginationFilename)) {
-        paginationFile = device->openFile(paginationFilename, O_RDWR | O_TRUNC);
+    if (this->_getPaginationFile(record, paginationFilename)) { // If the pagination file for the BookRecord exists
+        paginationFile = device->openFile(paginationFilename, O_RDWR | O_TRUNC); // ...open it with read/write and truncate
     } else {
-        paginationFile = device->openFile(paginationFilename, O_CREAT | O_RDWR);
+        paginationFile = device->openFile(paginationFilename, O_RDWR | O_CREAT); // ...or else, create and open it read/write
     }
+
+    // Write an empty placeholder header
+    BookPaginationHeader header = {0};
     paginationFile.write((byte *)&header, sizeof(BookPaginationHeader));
-    paginationFile.seekSet(0);
+    paginationFile.seekSet(0);  // TODO: Is this needed?
     paginationFile.flush();
     paginationFile.close();
 
     // now process the whole file and seek out chapter headings.
     BookChapter chapter = {0};
-    File f = device->openFile(record.filename);
-    f.seekSet(record.textStart);
+    File bookFile = device->openFile(record.filename);
+    bookFile.seekSet(record.textStart);
     do {
-        if (f.read() == 0x1e) {
-            chapter.loc = f.position() - 1;
+        if (bookFile.read() == 0x1e) {
+            chapter.loc = bookFile.position() - 1;
             chapter.len++;
             header.numChapters++;
             char c;
             do {
-                c = f.read();
+                c = bookFile.read();
                 chapter.len++;
             } while(c != '\n');
-            f.close();
+            bookFile.close();
             paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
             paginationFile.write((byte *)&chapter, sizeof(BookChapter));
             paginationFile.flush();
             paginationFile.close();
-            f = device->openFile(record.filename);
-            f.seekSet(chapter.loc + chapter.len);
+            bookFile = device->openFile(record.filename);
+            bookFile.seekSet(chapter.loc + chapter.len);
             chapter = {0};
         }
-    } while (f.available());
-    f.close();
+    } while (bookFile.available());
+    bookFile.close();
 
     if (header.numChapters) {
         // if we found chapters, mark the table of contents as starting right after the header...
@@ -327,18 +336,18 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
     char utf8bytes[128];
     BABEL_CODEPOINT codepoints[127];
 
-    f = device->openFile(record.filename);
-    f.seekSet(record.textStart);
+    bookFile = device->openFile(record.filename);
+    bookFile.seekSet(record.textStart);
     const int16_t pageWidth = 288;
-    const int16_t pageHeight = 384;
+    const int16_t pageHeight = 320;
     uint32_t nextPosition = 0;
     bool firstLoop = true;
 
-    page.loc = f.position();
+    page.loc = bookFile.position();
     page.len = 0;
     do {
-        uint32_t startPosition = f.position();
-        int bytesRead = f.read(utf8bytes, 127);
+        uint32_t startPosition = bookFile.position();
+        int bytesRead = bookFile.read(utf8bytes, 127);
         utf8bytes[127] = 0;
         bool wrapped = false;
         babel->utf8_parse(utf8bytes, codepoints);
@@ -346,17 +355,17 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
         if (codepoints[0] == 0x1e) {
             if (!firstLoop) {
                 // close out the last chapter
-                nextPosition = f.position();
-                f.close();
+                nextPosition = bookFile.position();
+                bookFile.close();
                 paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
                 paginationFile.write((byte *)&page, sizeof(BookPage));
                 paginationFile.flush();
                 paginationFile.close();
-                f = device->openFile(record.filename);
+                bookFile = device->openFile(record.filename);
                 header.numPages++;
                 page.loc = page.loc + page.len;
                 page.len = 0;
-                f.seekSet(nextPosition);
+                bookFile.seekSet(nextPosition);
             }
 
             int32_t line_end = 0;
@@ -389,22 +398,22 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
         
         if (yPos + 16 > pageHeight) {
 BREAK_PAGE:
-            f.close();
+            bookFile.close();
             paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
             paginationFile.write((byte *)&page, sizeof(BookPage));
             paginationFile.flush();
             paginationFile.close();
-            f = device->openFile(record.filename);
+            bookFile = device->openFile(record.filename);
             header.numPages++;
             yPos = 0;
             page.loc = page.loc + page.len;
             page.len = 0;
         }
-        f.seekSet(nextPosition);
+        bookFile.seekSet(nextPosition);
         firstLoop = false;
-    } while (f.available());
+    } while (bookFile.available());
 
-    f.close();
+    bookFile.close();
     paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
     paginationFile.write((byte *)&page, sizeof(BookPage));
     paginationFile.flush();
@@ -460,11 +469,21 @@ std::string OpenBookDatabase::getTextForPage(BookRecord record, uint32_t page) {
     return "";
 }
 
+/**
+ * This method takes in a BookRecord and using it's filename, copies it to the output filename
+ *  then finds the byte location of four less than the record's filename's string length
+ *  and appends the extension .pag to it.
+ * Then returning whether or not that filename exists on the device or not.
+ * 
+ * @param  record The BookRecord object you're attempting to get the pagination file for
+ * @param  outFilename A pointer to the char array for the pagination filename
+ * @return A boolean of if the file already exists or not
+*/
 bool OpenBookDatabase::_getPaginationFile(BookRecord record, char *outFilename) {
-    const uint32_t extension = 1734438958; // four ASCII characters, .pag
+    const uint32_t extension = 1734438958; // Four ASCII characters, .pag
 
-    memcpy(outFilename, record.filename, 128);
-    memcpy((byte *)outFilename + (strlen(outFilename) - 4), (byte *)&extension, sizeof(extension));
+    memcpy(outFilename, record.filename, 128); // Copy record's filename to the output filename variable
+    memcpy((byte *)outFilename + (strlen(outFilename) - 4), (byte *)&extension, sizeof(extension)); // 
 
     return OpenBookDevice::sharedDevice()->fileExists(outFilename);
 }
