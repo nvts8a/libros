@@ -10,9 +10,11 @@
 #define WORKING_FILENAME  ("_LIBTEMP")
 
 #define DATABASE_VERSION  (0x0000)
-#define NUM_FIELDS        (5)
+
+static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
 
 // Header
+static const int HEADER_TAG_COUNT  = 5;
 static const int TAG_TITLE         = 1280592212;
 static const int TAG_AUTHOR        = 1213486401;
 static const int TAG_GENRE         = 1163021895;
@@ -43,13 +45,12 @@ typedef struct {
     uint64_t textStart = 0;
     uint64_t currentPosition = 0;
     uint64_t flags = 0;
-    BookField metadata[NUM_FIELDS];
+    BookField metadata[HEADER_TAG_COUNT];
 } BookRecord;
 
 typedef struct {
     uint64_t flags = 0;
     uint32_t version = DATABASE_VERSION;
-    uint16_t numFields = NUM_FIELDS;
     uint16_t reserved1 = 0;
     uint32_t numBooks = 0;
     uint32_t reserved2 = 0;
@@ -112,11 +113,11 @@ public:
 
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
+    File _findOrCreateLibraryFile(OpenBookDevice* device);
     bool _fileIsTxt(File entry);
     bool _fileLooksLikeBook(File entry);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
     bool _getPaginationFile(BookRecord record, char *outFilename);
-    uint16_t numFields = 0;
     uint32_t numBooks = 0;
 private:
     OpenBookDatabase();

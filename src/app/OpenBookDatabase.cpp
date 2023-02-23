@@ -2,51 +2,49 @@
 #include "sha256.h"
 #include <map>
 
-static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
+OpenBookDatabase::OpenBookDatabase() {}
 
-OpenBookDatabase::OpenBookDatabase() {
+/**
+ * Run on an instance of OpenBookDatabase, this creates the library binary with a header, if one doesn't exist,
+ *  recovers from a backup if a backup is present. Cleans up working and backup files, if present.
+ * Then it ensures the validity of the database and sets class variables based on the header.
+ * 
+ * @return A boolean if the OpenBookDatabase of if the database is present and valid 
+*/
+bool OpenBookDatabase::connect() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice(); 
+    File database = this->_findOrCreateLibraryFile(device);
 
+    uint64_t magic;
+    BookDatabaseHeader header;
+    database.read((byte *)&magic, sizeof(magic));
+    database.read((byte *)&header, sizeof(BookDatabaseHeader));
+    database.close();
+
+    if (magic != DATABASE_FILE_IDENTIFIER)  return false;
+    if (header.version != DATABASE_VERSION) return false;
+
+    this->numBooks = header.numBooks;
+    return true;
 }
 
-bool OpenBookDatabase::connect() {
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    BookDatabaseHeader header;
-
+File OpenBookDatabase::_findOrCreateLibraryFile(OpenBookDevice* device) {
     if (!device->fileExists(LIBRARY_FILENAME)) {
         if (device->fileExists(BACKUP_FILENAME)) {
             device->renameFile(BACKUP_FILENAME, LIBRARY_FILENAME);
         } else {
             File database = device->openFile(LIBRARY_FILENAME, O_CREAT | O_RDWR);
+            BookDatabaseHeader blankHeader;
             database.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-            database.write((byte *)&header, sizeof(header));
+            database.write((byte *)&blankHeader, sizeof(BookDatabaseHeader));
             database.flush();
             database.close();
         }
     }
-    if (device->fileExists(WORKING_FILENAME)) {
-        device->removeFile(WORKING_FILENAME);
-    }
-    if (device->fileExists(BACKUP_FILENAME)) {
-        device->removeFile(BACKUP_FILENAME);
-    }
-    File database = device->openFile(LIBRARY_FILENAME);
-    uint64_t magic;
-    database.read((byte *)&magic, sizeof(magic));
-    database.read((byte *)&header, sizeof(BookDatabaseHeader));
-    database.close();
+    if (device->fileExists(WORKING_FILENAME)) device->removeFile(WORKING_FILENAME);
+    if (device->fileExists(BACKUP_FILENAME))  device->removeFile(BACKUP_FILENAME);
 
-    if (magic != DATABASE_FILE_IDENTIFIER) {
-        return false;
-    }
-
-    if (header.version != DATABASE_VERSION) {
-        return false;
-    }
-
-    this->numBooks = header.numBooks;
-    this->numFields = header.numFields;
-
-    return true;
+    return device->openFile(LIBRARY_FILENAME);
 }
 
 bool OpenBookDatabase::_fileIsTxt(File entry) {
@@ -100,6 +98,7 @@ bool OpenBookDatabase::scanForNewBooks() {
     temp.write((byte *)&header, sizeof(BookDatabaseHeader));
     temp.flush();
     temp.close();
+    this->numBooks = header.numBooks; // Update the current database
 
     root = device->openFile("/");
     entry = root.openNextFile();
