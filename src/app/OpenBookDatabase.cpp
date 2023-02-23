@@ -12,24 +12,24 @@ bool OpenBookDatabase::connect() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     BookDatabaseHeader header;
 
-    if (!device->fileExists(OPEN_BOOK_LIBRARY_FILENAME)) {
-        if (device->fileExists(OPEN_BOOK_BACKUP_FILENAME)) {
-            device->renameFile(OPEN_BOOK_BACKUP_FILENAME, OPEN_BOOK_LIBRARY_FILENAME);
+    if (!device->fileExists(LIBRARY_FILENAME)) {
+        if (device->fileExists(BACKUP_FILENAME)) {
+            device->renameFile(BACKUP_FILENAME, LIBRARY_FILENAME);
         } else {
-            File database = device->openFile(OPEN_BOOK_LIBRARY_FILENAME, O_CREAT | O_RDWR);
+            File database = device->openFile(LIBRARY_FILENAME, O_CREAT | O_RDWR);
             database.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
             database.write((byte *)&header, sizeof(header));
             database.flush();
             database.close();
         }
     }
-    if (device->fileExists(OPEN_BOOK_WORKING_FILENAME)) {
-        device->removeFile(OPEN_BOOK_WORKING_FILENAME);
+    if (device->fileExists(WORKING_FILENAME)) {
+        device->removeFile(WORKING_FILENAME);
     }
-    if (device->fileExists(OPEN_BOOK_BACKUP_FILENAME)) {
-        device->removeFile(OPEN_BOOK_BACKUP_FILENAME);
+    if (device->fileExists(BACKUP_FILENAME)) {
+        device->removeFile(BACKUP_FILENAME);
     }
-    File database = device->openFile(OPEN_BOOK_LIBRARY_FILENAME);
+    File database = device->openFile(LIBRARY_FILENAME);
     uint64_t magic;
     database.read((byte *)&magic, sizeof(magic));
     database.read((byte *)&header, sizeof(BookDatabaseHeader));
@@ -39,7 +39,7 @@ bool OpenBookDatabase::connect() {
         return false;
     }
 
-    if (header.version != OPEN_BOOK_DATABASE_VERSION) {
+    if (header.version != DATABASE_VERSION) {
         return false;
     }
 
@@ -95,7 +95,7 @@ bool OpenBookDatabase::scanForNewBooks() {
     // now that we have a number of books we can write the header to the temp database
     BookDatabaseHeader header;
     header.numBooks = numBooks;
-    File temp = device->openFile(OPEN_BOOK_WORKING_FILENAME, O_RDWR | O_CREAT);
+    File temp = device->openFile(WORKING_FILENAME, O_RDWR | O_CREAT);
     temp.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
     temp.write((byte *)&header, sizeof(BookDatabaseHeader));
     temp.flush();
@@ -142,20 +142,20 @@ bool OpenBookDatabase::scanForNewBooks() {
                     field.loc = loc;
                     field.len = len;
                     switch (tag) {
-                        case 1280592212: // TITL
-                            record.metadata[OPEN_BOOK_TITLE_INDEX] = field;
+                        case (TAG_TITLE):
+                            record.metadata[INDEX_TITLE] = field;
                             break;
-                        case 1213486401: // AUTH
-                            record.metadata[OPEN_BOOK_AUTHOR_INDEX] = field;
+                        case (TAG_AUTHOR):
+                            record.metadata[INDEX_AUTHOR] = field;
                             break;
-                        case 1163021895: // GNRE
-                            record.metadata[OPEN_BOOK_GENRE_INDEX] = field;
+                        case (TAG_GENRE):
+                            record.metadata[INDEX_GENRE] = field;
                             break;
-                        case 1129530692: // DESC
-                            record.metadata[OPEN_BOOK_DESCRIPTION_INDEX] = field;
+                        case (TAG_DESCRIPTION):
+                            record.metadata[INDEX_DESCRIPTION] = field;
                             break;
-                        case 1196310860: // LANG
-                            record.metadata[OPEN_BOOK_LANGUAGE_INDEX] = field;
+                        case (TAG_LANGUAGE):
+                            record.metadata[INDEX_LANGUAGE] = field;
                             break;
                         default:
                             break;
@@ -177,10 +177,10 @@ bool OpenBookDatabase::scanForNewBooks() {
                     char c = entry.read();
                     if ((c == '\r') || c == '\n') field.len = i;
                 }
-                record.metadata[OPEN_BOOK_TITLE_INDEX] = field;
+                record.metadata[INDEX_TITLE] = field;
             }
             entry.close();
-            temp = device->openFile(OPEN_BOOK_WORKING_FILENAME, O_RDWR | O_AT_END);
+            temp = device->openFile(WORKING_FILENAME, O_RDWR | O_AT_END);
             temp.write((byte *)&record, sizeof(BookRecord));
             temp.flush();
             temp.close();
@@ -188,9 +188,9 @@ bool OpenBookDatabase::scanForNewBooks() {
         entry = root.openNextFile();
     }
 
-    device->renameFile(OPEN_BOOK_LIBRARY_FILENAME, OPEN_BOOK_BACKUP_FILENAME);
-    device->renameFile(OPEN_BOOK_WORKING_FILENAME, OPEN_BOOK_LIBRARY_FILENAME);
-    device->removeFile(OPEN_BOOK_BACKUP_FILENAME);
+    device->renameFile(LIBRARY_FILENAME, BACKUP_FILENAME);
+    device->renameFile(WORKING_FILENAME, LIBRARY_FILENAME);
+    device->removeFile(BACKUP_FILENAME);
     
     return true;
 }
@@ -201,7 +201,7 @@ uint32_t OpenBookDatabase::getNumberOfBooks() {
 
 BookRecord OpenBookDatabase::getBookRecord(uint32_t i) {
     BookRecord retval;
-    File database = OpenBookDevice::sharedDevice()->openFile(OPEN_BOOK_LIBRARY_FILENAME);
+    File database = OpenBookDevice::sharedDevice()->openFile(LIBRARY_FILENAME);
 
     database.seekSet(sizeof(DATABASE_FILE_IDENTIFIER) + sizeof(BookDatabaseHeader) + i * sizeof(BookRecord));
     database.read((byte *)&retval, sizeof(BookRecord));
@@ -211,15 +211,15 @@ BookRecord OpenBookDatabase::getBookRecord(uint32_t i) {
 }
 
 std::string OpenBookDatabase::getBookTitle(BookRecord record) {
-    return this->_getMetadataAtIndex(record, OPEN_BOOK_TITLE_INDEX);
+    return this->_getMetadataAtIndex(record, INDEX_TITLE);
 }
 
 std::string OpenBookDatabase::getBookAuthor(BookRecord record) {
-    return this->_getMetadataAtIndex(record, OPEN_BOOK_AUTHOR_INDEX);
+    return this->_getMetadataAtIndex(record, INDEX_AUTHOR);
 }
 
 std::string OpenBookDatabase::getBookDescription(BookRecord record) {
-    return this->_getMetadataAtIndex(record, OPEN_BOOK_DESCRIPTION_INDEX);
+    return this->_getMetadataAtIndex(record, INDEX_DESCRIPTION);
 }
 
 uint32_t OpenBookDatabase::getCurrentPage(BookRecord record) {
@@ -295,7 +295,7 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
     File bookFile = device->openFile(record.filename);
     bookFile.seekSet(record.textStart);
     do {
-        if (bookFile.read() == 0x1e) {
+        if (bookFile.read() == CHAPTER_MARK) {
             chapter.loc = bookFile.position() - 1;
             chapter.len++;
             header.numChapters++;
@@ -339,7 +339,7 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
     bookFile = device->openFile(record.filename);
     bookFile.seekSet(record.textStart);
     const int16_t pageWidth = 288;
-    const int16_t pageHeight = 320;
+    const int16_t pageHeight = 384;
     uint32_t nextPosition = 0;
     bool firstLoop = true;
 
@@ -352,7 +352,7 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
         bool wrapped = false;
         babel->utf8_parse(utf8bytes, codepoints);
 
-        if (codepoints[0] == 0x1e) {
+        if (codepoints[0] == CHAPTER_MARK) {
             if (!firstLoop) {
                 // close out the last chapter
                 nextPosition = bookFile.position();
@@ -378,7 +378,7 @@ void OpenBookDatabase::paginateBook(BookRecord record) {
             size_t bytePosition;
             babel->word_wrap_position(codepoints, bytesRead, &wrapped, &bytePosition, pageWidth, 1);
             for(int i = bytePosition; i < 127; i++) {
-                if (utf8bytes[i] == 0x20) bytePosition++;
+                if (utf8bytes[i] == SPACE) bytePosition++;
                 else break;
             }
             if (bytePosition > 0) {

@@ -5,17 +5,28 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-#define OPEN_BOOK_LIBRARY_FILENAME ("_LIBRARY")
-#define OPEN_BOOK_BACKUP_FILENAME ("_LIBBACK")
-#define OPEN_BOOK_WORKING_FILENAME ("_LIBTEMP")
+#define LIBRARY_FILENAME  ("_LIBRARY")
+#define BACKUP_FILENAME   ("_LIBBACK")
+#define WORKING_FILENAME  ("_LIBTEMP")
 
-#define OPEN_BOOK_DATABASE_VERSION (0x0000)
-#define OPEN_BOOK_NUM_FIELDS (5)
-#define OPEN_BOOK_TITLE_INDEX (0)
-#define OPEN_BOOK_AUTHOR_INDEX (1)
-#define OPEN_BOOK_GENRE_INDEX (2)
-#define OPEN_BOOK_DESCRIPTION_INDEX (3)
-#define OPEN_BOOK_LANGUAGE_INDEX (4)
+#define DATABASE_VERSION  (0x0000)
+#define NUM_FIELDS        (5)
+
+// Header
+static const int TAG_TITLE         = 1280592212;
+static const int TAG_AUTHOR        = 1213486401;
+static const int TAG_GENRE         = 1163021895;
+static const int TAG_DESCRIPTION   = 1129530692;
+static const int TAG_LANGUAGE      = 1196310860;
+static const int INDEX_TITLE       = 0;
+static const int INDEX_AUTHOR      = 1;
+static const int INDEX_GENRE       = 2;
+static const int INDEX_DESCRIPTION = 3;
+static const int INDEX_LANGUAGE    = 4;
+
+// Special characters
+static const char  CHAPTER_MARK = 0x1e;
+static const char  SPACE        = 0x20;
 
 // Structs for the _LIBRARY database
 
@@ -32,13 +43,13 @@ typedef struct {
     uint64_t textStart = 0;
     uint64_t currentPosition = 0;
     uint64_t flags = 0;
-    BookField metadata[OPEN_BOOK_NUM_FIELDS];
+    BookField metadata[NUM_FIELDS];
 } BookRecord;
 
 typedef struct {
     uint64_t flags = 0;
-    uint32_t version = OPEN_BOOK_DATABASE_VERSION;
-    uint16_t numFields = OPEN_BOOK_NUM_FIELDS;
+    uint32_t version = DATABASE_VERSION;
+    uint16_t numFields = NUM_FIELDS;
     uint16_t reserved1 = 0;
     uint32_t numBooks = 0;
     uint32_t reserved2 = 0;

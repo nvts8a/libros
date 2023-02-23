@@ -17,7 +17,7 @@ public:
 
     std::shared_ptr<BookListViewController> mainMenu;
 
-// Callbacks
+    // Callbacks
     void showLockScreen(Event event);
     void showBookReader(Event event);
     void returnHome(Event event);
