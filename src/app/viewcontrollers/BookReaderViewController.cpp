@@ -134,21 +134,26 @@ void BookReaderViewController::handleModal(Event event) {
     }
 }
 
+/**
+ * Sets the current pages text to the visible book text, with custom size for chapters.
+ *  And updates the progress bar accordingly.
+*/
 void BookReaderViewController::_updateView() {
+    // Set the page text
     std::string text = OpenBookDatabase::sharedDatabase()->getTextForPage(this->book, this->currentPage);
-    if (text[0] == 0x1e)this->bookText->setTextSize(2);
-    else this->bookText->setTextSize(1);
     this->bookText->setText(text.c_str());
 
-    float percentComplete = (float)(this->currentPage) / (float)(this->numPages);
-    this->progressView->setProgress(percentComplete);
+    // Set the text size
+    if (text[0] == OpenBookDatabase_h::CHAPTER_MARK) this->bookText->setTextSize(2);
+    else this->bookText->setTextSize(1);
 
-    char buf[16];
-    sprintf(buf, "%ld/%ld", this->currentPage + 1, this->numPages);
-    this->progressLabel->setText(buf);
+    // Set the progress bar and percentage
+    float percentComplete = (float)(this->currentPage + 1) / (float)(this->numPages);
+    this->progressView->setProgress(percentComplete);
+    std::string progressText = std::to_string(this->currentPage + 1) + '/' + std::to_string(this->numPages);
+    this->progressLabel->setText(progressText);
     this->progressLabel->setForegroundColor(EPD_BLACK);
-    // TODO: label should be able to align itself to the right, right?
-    int16_t xpos = (int16_t)(percentComplete * 300) - strlen(buf) * 6;
+    int16_t xpos = (int16_t)(percentComplete * 300) - progressText.length() * 6;
     this->progressLabel->setFrame(MakeRect(max(0, xpos), 400 - 8 - 4, 90, 8));
 
     this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_QUICK);
