@@ -18,7 +18,7 @@ void FatalErrorViewController::createView() {
     std::shared_ptr<Button> button = std::make_shared<Button>(MakeRect(20, 60, 180, 20), "Restart Now");
     modal->addSubview(button);
     this->view->addSubview(modal);
-    this->view->setAction(std::bind(&FatalErrorViewController::dismiss, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_TAP);
+    this->view->setAction(std::bind(&FatalErrorViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
 }
 
 void FatalErrorViewController::dismiss(Event event) {

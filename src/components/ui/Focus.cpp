@@ -146,18 +146,18 @@ bool View::handleEvent(Event event) {
         if (std::shared_ptr<Application> application = window->application.lock()) {
             this->actions[event.type](event);
         }
-    } else if (event.type < FOCUS_EVENT_BUTTON_TAP) {
+    } else if (event.type < BUTTON_TAP) {
         uint32_t index = std::distance(this->subviews.begin(), std::find(this->subviews.begin(), this->subviews.end(), focusedView));
         if (this->affinity == DirectionalAffinityVertical) {
             switch (event.type) {
-                case FOCUS_EVENT_BUTTON_UP:
+                case BUTTON_UP:
                     while (index > 0) {
                         if (this->subviews[index - 1]->canBecomeFocused()) this->subviews[index - 1]->becomeFocused();
                         else index--;
                         return true;
                     }
                     break;
-                case FOCUS_EVENT_BUTTON_DOWN:
+                case BUTTON_DOWN:
                     while ((index + 1) < this->subviews.size()) {
                         if (this->subviews[index + 1]->canBecomeFocused()) this->subviews[index + 1]->becomeFocused();
                         else index--;
@@ -169,13 +169,13 @@ bool View::handleEvent(Event event) {
             }
         } else if (this->affinity == DirectionalAffinityHorizontal) {
             switch (event.type) {
-                case FOCUS_EVENT_BUTTON_LEFT:
+                case BUTTON_LEFT:
                     while (index > 0) {
                         if (this->subviews[index - 1]->canBecomeFocused()) this->subviews[index - 1]->becomeFocused();
                         return true;
                     }
                     break;
-                case FOCUS_EVENT_BUTTON_RIGHT:
+                case BUTTON_RIGHT:
                     while ((index + 1) < this->subviews.size()) {
                         if (this->subviews[index + 1]->canBecomeFocused()) this->subviews[index + 1]->becomeFocused();
                         return true;

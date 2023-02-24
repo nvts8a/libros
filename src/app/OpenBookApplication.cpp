@@ -40,7 +40,7 @@ void OpenBookApplication::setup() {
         }
     }
 
-    this->window->setAction(std::bind(&OpenBookApplication::showLockScreen, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_LOCK);
+    this->window->setAction(std::bind(&OpenBookApplication::showLockScreen, this, std::placeholders::_1), BUTTON_LOCK);
     this->window->setAction(std::bind(&OpenBookApplication::showBookReader, this, std::placeholders::_1), OPEN_BOOK_EVENT_BOOK_SELECTED);
     this->window->setAction(std::bind(&OpenBookApplication::returnHome, this, std::placeholders::_1), OPEN_BOOK_EVENT_RETURN_HOME);
     this->window->setAction(std::bind(&OpenBookApplication::changeRefreshMode, this, std::placeholders::_1), OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE);

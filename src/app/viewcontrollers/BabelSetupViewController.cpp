@@ -20,7 +20,7 @@ void BabelSetupViewController::createView() {
         modal->addSubview(label3);
         std::shared_ptr<Button> button = std::make_shared<Button>(MakeRect(20, 60, 180, 20), "Restart Now");
         modal->addSubview(button);
-        this->view->setAction(std::bind(&BabelSetupViewController::dismiss, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_TAP);
+        this->view->setAction(std::bind(&BabelSetupViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
         this->view->addSubview(modal);
     } else {
         std::shared_ptr<Label> label1 = std::make_shared<Label>(MakeRect(20, 20, 180, 8), "Flashing language chip.");

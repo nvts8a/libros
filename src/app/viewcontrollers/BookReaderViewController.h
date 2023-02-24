@@ -11,7 +11,8 @@ public:
     BookReaderViewController(std::shared_ptr<Application> application, BookRecord book);
     virtual void viewWillAppear() override;
 
-    void turnPage(Event event);
+    void nextPage(Event event);
+    void previousPage(Event event);
     void returnHome(Event event);
     void saveProgress(Event event);
     void showMenu(Event event);

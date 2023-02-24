@@ -1,5 +1,9 @@
 # libros
 
+- 0.2.1
+  - Fixed bug where you could turn the page past max book page size
+  - BookReaderViewController refactors and code quaility improvements and comments
+  - Moving some Focus.h defines to consts and shortening names
 - 0.2.0
   - A new folder is created when it doesn't exist, _DATABASE
   - _LIBRARY is now stored and read from _DATABASE

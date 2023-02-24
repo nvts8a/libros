@@ -28,31 +28,35 @@ void BookReaderViewController::createView() {
     this->progressLabel = std::make_shared<Label>(MakeRect(0, 400 - 8, 90, 8), "");
     this->view->addSubview(this->progressLabel);
 
-    this->view->setAction(std::bind(&BookReaderViewController::returnHome, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_TAP);
-    this->view->setAction(std::bind(&BookReaderViewController::saveProgress, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_LOCK);
-    this->view->setAction(std::bind(&BookReaderViewController::turnPage, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_PREV);
-    this->view->setAction(std::bind(&BookReaderViewController::turnPage, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_NEXT);
-    this->view->setAction(std::bind(&BookReaderViewController::showMenu, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_UP);
+    this->view->setAction(std::bind(&BookReaderViewController::returnHome, this, std::placeholders::_1), BUTTON_TAP);
+    this->view->setAction(std::bind(&BookReaderViewController::saveProgress, this, std::placeholders::_1), BUTTON_LOCK);
+    this->view->setAction(std::bind(&BookReaderViewController::previousPage, this, std::placeholders::_1), BUTTON_PREV);
+    this->view->setAction(std::bind(&BookReaderViewController::nextPage, this, std::placeholders::_1), BUTTON_NEXT);
+    this->view->setAction(std::bind(&BookReaderViewController::showMenu, this, std::placeholders::_1), BUTTON_UP);
 }
 
-void BookReaderViewController::turnPage(Event event) {
-    switch (event.type) {
-        case FOCUS_EVENT_BUTTON_NEXT:
-            // FIXME: check if this is the last page
-            if (true) {
-                this->currentPage++;
-            }
-            break;
-        case FOCUS_EVENT_BUTTON_PREV:
-            if (this->currentPage > 0) {
-                this->currentPage--;
-            }
-            break;
-        default:
-            return;
+/**
+ * Increments the currents page if it hasn't hit it's max,
+ *  then refreshes only if there was a page change
+ * @param event UNUSED
+*/
+void BookReaderViewController::nextPage(Event event) {
+    if (this->currentPage < this->numPages-1) {
+        this->currentPage++;
+        this->_updateView();
     }
+}
 
-    this->_updateView();
+/**
+ * Decrements the currents page if it hasn't hit it's min,
+ *  then refreshes only if there was a page change
+ * @param event UNUSED
+*/
+void BookReaderViewController::previousPage(Event event) {
+    if (this->currentPage > 0) {
+        this->currentPage--;
+        this->_updateView();
+    }
 }
 
 void BookReaderViewController::returnHome(Event event) {
@@ -91,9 +95,9 @@ void BookReaderViewController::showMenu(Event event) {
 
     this->view->addSubview(this->modal);
 
-    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_LEFT);
-    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_RIGHT);
-    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_TAP);
+    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), BUTTON_LEFT);
+    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), BUTTON_RIGHT);
+    this->modal->setAction(std::bind(&BookReaderViewController::handleModal, this, std::placeholders::_1), BUTTON_TAP);
 
     this->modal->becomeFocused();
     this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
@@ -103,7 +107,7 @@ void BookReaderViewController::handleModal(Event event) {
     float percentComplete;
     std::stringstream ss;
     switch (event.type) {
-        case FOCUS_EVENT_BUTTON_LEFT:
+        case BUTTON_LEFT:
             this->currentPage = max(this->currentPage - 10, 0);
             percentComplete = (float)(this->currentPage) / (float)(this->numPages);
             ss << "Go to page " << this->currentPage + 1;
@@ -111,7 +115,7 @@ void BookReaderViewController::handleModal(Event event) {
             this->gotoPageLabel->setText(ss.str());
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_PARTIAL);
             break;
-        case FOCUS_EVENT_BUTTON_RIGHT:
+        case BUTTON_RIGHT:
             this->currentPage = min(this->currentPage + 10, this->numPages);
             percentComplete = (float)(this->currentPage) / (float)(this->numPages);
             ss << "Go to page " << this->currentPage + 1;
@@ -119,7 +123,7 @@ void BookReaderViewController::handleModal(Event event) {
             this->gotoPageLabel->setText(ss.str());
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_PARTIAL);
             break;
-        case FOCUS_EVENT_BUTTON_TAP:
+        case BUTTON_TAP:
             this->view->removeSubview(this->modal);
             this->modal = NULL;
             this->modalSlider = NULL;

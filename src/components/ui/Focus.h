@@ -8,14 +8,14 @@
 #include <functional>
 #include "Adafruit_GFX.h"
 
-#define FOCUS_EVENT_BUTTON_LEFT (0)
-#define FOCUS_EVENT_BUTTON_DOWN (1)
-#define FOCUS_EVENT_BUTTON_UP (2)
-#define FOCUS_EVENT_BUTTON_RIGHT (3)
-#define FOCUS_EVENT_BUTTON_TAP (4)
-#define FOCUS_EVENT_BUTTON_PREV (5)
-#define FOCUS_EVENT_BUTTON_NEXT (6)
-#define FOCUS_EVENT_BUTTON_LOCK (7)
+const int BUTTON_LEFT  = 0;
+const int BUTTON_DOWN  = 1;
+const int BUTTON_UP    = 2;
+const int BUTTON_RIGHT = 3;
+const int BUTTON_TAP   = 4;
+const int BUTTON_PREV  = 5;
+const int BUTTON_NEXT  = 6;
+const int BUTTON_LOCK  = 7;
 
 typedef struct {
     int16_t x;
