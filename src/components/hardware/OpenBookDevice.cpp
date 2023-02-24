@@ -272,6 +272,10 @@ bool OpenBookDevice::fileExists(const char *path) {
     return this->sd->exists(path);
 }
 
+bool OpenBookDevice::makeDirectory(const char *path) {
+    return this->sd->mkdir(path);
+}
+
 File OpenBookDevice::openFile(const char *path, oflag_t oflag) {
     return this->sd->open(path, oflag);
 }

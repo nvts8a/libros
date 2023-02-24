@@ -65,6 +65,7 @@ public:
     BabelTypesetterGFX *getTypesetter();
 
     bool fileExists(const char *path);
+    bool makeDirectory(const char *path);
     File openFile(const char *path, oflag_t oflag = FILE_READ);
     bool renameFile(const char *oldPath, const char *newPath);
     bool removeFile(const char *path);

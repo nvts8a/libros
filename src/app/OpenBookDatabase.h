@@ -5,16 +5,23 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-#define LIBRARY_FILENAME  ("_LIBRARY")
-#define BACKUP_FILENAME   ("_LIBBACK")
-#define WORKING_FILENAME  ("_LIBTEMP")
+#define DATABASE_DIR      ("/_DATABASE/")
+#define PAGINATION_DIR    ("/_DATABASE/_PAGES/")
+#define LIBRARY_FILENAME  ("/_DATABASE/_LIBRARY")
+#define BACKUP_FILENAME   ("/_DATABASE/_LIBBACK")
+#define WORKING_FILENAME  ("/_DATABASE/_LIBTEMP")
+#define BOOKS_DIR         ("/")
 
 #define DATABASE_VERSION  (0x0000)
 
 static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
+static const int TXT_EXTENSION = 1954051118;
+static const std::string PAG_EXTENSION = ".pag";
+static const std::string OBP_EXTENSION = ".obp";
 
 // Header
 static const int HEADER_TAG_COUNT  = 5;
+static const int HEADER_DELIMITER  = 170732845;
 static const int TAG_TITLE         = 1280592212;
 static const int TAG_AUTHOR        = 1213486401;
 static const int TAG_GENRE         = 1163021895;
@@ -115,9 +122,11 @@ public:
 protected:
     File _findOrCreateLibraryFile(OpenBookDevice* device);
     bool _fileIsTxt(File entry);
-    bool _fileLooksLikeBook(File entry);
+    bool _hasHeader(File entry);
+    BookRecord _processBookFile(File entry);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
-    bool _getPaginationFile(BookRecord record, char *outFilename);
+    const char* _getPaginationFilename(BookRecord record);
+    const char* _getCurrentPageFilename(BookRecord record);
     uint32_t numBooks = 0;
 private:
     OpenBookDatabase();

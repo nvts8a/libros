@@ -31,11 +31,13 @@ void OpenBookApplication::setup() {
     }
 
     if (ready) {
-        OpenBookDatabase::sharedDatabase()->connect();
-        OpenBookDatabase::sharedDatabase()->scanForNewBooks();
-
-        this->mainMenu = std::make_shared<BookListViewController>(this->shared_from_this());
-        this->setRootViewController(this->mainMenu);
+        if (OpenBookDatabase::sharedDatabase()->connect()) {
+            OpenBookDatabase::sharedDatabase()->scanForNewBooks();
+            this->mainMenu = std::make_shared<BookListViewController>(this->shared_from_this());
+            this->setRootViewController(this->mainMenu);
+        } else {
+            // TODO: Present a failure to establish database error
+        }
     }
 
     this->window->setAction(std::bind(&OpenBookApplication::showLockScreen, this, std::placeholders::_1), FOCUS_EVENT_BUTTON_LOCK);
