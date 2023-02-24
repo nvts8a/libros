@@ -1,8 +1,14 @@
 # libros
+
+[Download the latest version of libros here.](https://github.com/nvts8a/libros/raw/main/releases/libros-LATEST.uf2)
+
 Minor versions (0.0.1 > 0.0.2) represent no functional changes or features, sometimes bug fixes
 
 Major versions (0.0.1 > 0.1.0) represent functional changes, features, or bug fixes that may break current files
 
+- [0.2.3](https://github.com/nvts8a/libros/raw/main/releases/libros-0.2.2.uf2)
+  - Fixed bug where the progress bar label starts all the way to the left regardless of the read percentage
+  - Moving some view positions to consts in BookReaderViewController.h
 - [0.2.2](https://github.com/nvts8a/libros/raw/main/releases/libros-0.2.2.uf2)
   - Fixed bug where the progress bar started at empty and only sized up to one less than completely full
   - Organized and commented BookReaderViewController::_updateView
