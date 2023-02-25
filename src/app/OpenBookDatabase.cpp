@@ -29,34 +29,37 @@ bool OpenBookDatabase::connect() {
 
 /**
  * Ensures the appropriate library directories are present, if not, creates them.
- *  Creates the library binary with a header if one doesn't exist, recovers from a backup 
- *  if a backup is present, then cleans up working and backup files, if present.
- * Then loads the library file and returns it.
+ *  Recovers from a backup if a backup is present, creates the library header binary if one doesn't exist,
+ *  then cleans up working and backup files, if present.
+ * Then loads the library header file and returns it.
  * @param  device The OpenBook hardware device
- * @return The libros library file
+ * @return The library header file
 */
 File OpenBookDatabase::_findOrCreateLibraryFile(OpenBookDevice* device) {
     if (!device->fileExists(DATABASE_DIR))   device->makeDirectory(DATABASE_DIR);
     if (!device->fileExists(PAGINATION_DIR)) device->makeDirectory(PAGINATION_DIR);
     if (!device->fileExists(BOOKS_DIR))      device->makeDirectory(BOOKS_DIR); // TODO: Bulletproof this by ignoring case
 
-    if (!device->fileExists(LIBRARY_FILENAME)) {
-        if (device->fileExists(BACKUP_FILENAME)) {
-            device->renameFile(BACKUP_FILENAME, LIBRARY_FILENAME);
-        } else {
-            File database = device->openFile(LIBRARY_FILENAME, O_CREAT | O_RDWR);
-            BookDatabaseHeader blankHeader;
-            database.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-            database.write((byte *)&blankHeader, sizeof(BookDatabaseHeader));
-            database.flush();
-            database.close();
-        }
+    if (!device->fileExists(LIBRARY_DIR)) {
+        if (device->fileExists(BACKUP_DIR)) {
+            device->renameFile(BACKUP_DIR, LIBRARY_DIR);
+        } else device->makeDirectory(LIBRARY_DIR);
     }
 
-    if (device->fileExists(WORKING_FILENAME)) device->removeFile(WORKING_FILENAME);
-    if (device->fileExists(BACKUP_FILENAME))  device->removeFile(BACKUP_FILENAME);
+    std::string headerFilename = LIBRARY_DIR + HEADER_FILE;
+    if (!device->fileExists(headerFilename.c_str())) {
+        File header = device->openFile(headerFilename.c_str(), O_CREAT | O_RDWR);
+        BookDatabaseHeader blankHeader;
+        header.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
+        header.write((byte *)&blankHeader, sizeof(BookDatabaseHeader));
+        header.flush();
+        header.close();
+    }
 
-    return device->openFile(LIBRARY_FILENAME);
+    if (device->fileExists(WORKING_DIR)) device->removeDirectoryRecursive(WORKING_DIR);
+    if (device->fileExists(BACKUP_DIR))  device->removeDirectoryRecursive(BACKUP_DIR);
+
+    return device->openFile(headerFilename.c_str());
 }
 
 /**
@@ -80,25 +83,30 @@ bool OpenBookDatabase::scanForNewBooks() {
             Records.push_back(this->_processBookFile(entry));
         }
         entry.close();
-    } entry.close();
+    }
 
-    // Now that we have all the data processed we can write the Library file
-    File temp = device->openFile(WORKING_FILENAME, O_RDWR | O_CREAT);
-
+    // Now that we have all the data processed we can write the Library files
+    device->makeDirectory(WORKING_DIR);
     BookDatabaseHeader header;
-    header.numBooks = numBooks;
-    temp.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-    temp.write((byte *)&header, sizeof(BookDatabaseHeader));
+    header.numBooks = this->numBooks = numBooks;
 
-    for(int i = 0; i < Records.size(); i++) {
-        temp.write((byte *)&Records[i], sizeof(BookRecord));
-    } 
+    for(int i = 0; i < min(MAX_BOOKS, (uint16_t)Records.size()); i++) {
+        std::string tempBookFilename = WORKING_DIR + std::to_string(i);
+        File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
+        tempBook.write((byte *)&Records[i], sizeof(BookRecord));
+        tempBook.flush(); tempBook.close();
+    }
+
+    std::string tempHeaderFilename = WORKING_DIR + HEADER_FILE;
+    File tempHeader = device->openFile(tempHeaderFilename.c_str(), O_RDWR | O_CREAT);
+    tempHeader.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
+    tempHeader.write((byte *)&header, sizeof(BookDatabaseHeader));
+    tempHeader.flush(); tempHeader.close();
     
-    temp.flush(); temp.close();
-    device->renameFile(LIBRARY_FILENAME, BACKUP_FILENAME);
-    device->renameFile(WORKING_FILENAME, LIBRARY_FILENAME);
-    device->removeFile(BACKUP_FILENAME);
-    this->numBooks = header.numBooks; // Update the current database
+    // Persist and clean up files
+    device->renameFile(LIBRARY_DIR, BACKUP_DIR);
+    device->renameFile(WORKING_DIR, LIBRARY_DIR);
+    device->removeDirectoryRecursive(BACKUP_DIR);
 
     return true;
 }
@@ -219,14 +227,14 @@ uint32_t OpenBookDatabase::getNumberOfBooks() {
 }
 
 BookRecord OpenBookDatabase::getBookRecord(uint32_t i) {
-    BookRecord retval;
-    File database = OpenBookDevice::sharedDevice()->openFile(LIBRARY_FILENAME);
+    BookRecord bookRecord;
+    //std::string bookRecordFilename = LIBRARY_DIR + std::to_string(this->bookShas[i]);
+    std::string bookRecordFilename = LIBRARY_DIR + std::to_string(i);
+    File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecordFilename.c_str());
+    bookFile.read((byte *)&bookRecord, sizeof(BookRecord));
+    bookFile.close();
 
-    database.seekSet(sizeof(DATABASE_FILE_IDENTIFIER) + sizeof(BookDatabaseHeader) + i * sizeof(BookRecord));
-    database.read((byte *)&retval, sizeof(BookRecord));
-    database.close();
-
-    return retval;
+    return bookRecord;
 }
 
 std::string OpenBookDatabase::getBookTitle(BookRecord record) {

@@ -65,10 +65,12 @@ public:
     BabelTypesetterGFX *getTypesetter();
 
     bool fileExists(const char *path);
-    bool makeDirectory(const char *path);
     File openFile(const char *path, oflag_t oflag = FILE_READ);
     bool renameFile(const char *oldPath, const char *newPath);
     bool removeFile(const char *path);
+    bool makeDirectory(const char *path);
+    bool removeDirectory(const char *path);
+    bool removeDirectoryRecursive(const char *path);
 
 protected:
     bool configureScreen(int8_t srcs, int8_t ecs, int8_t edc, int8_t erst, int8_t ebsy, SPIClass *spi, int width, int height);

@@ -5,14 +5,17 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-#define DATABASE_DIR      ("/_DATABASE/")
-#define PAGINATION_DIR    ("/_DATABASE/_PAGES/")
-#define LIBRARY_FILENAME  ("/_DATABASE/_LIBRARY")
-#define BACKUP_FILENAME   ("/_DATABASE/_LIBBACK")
-#define WORKING_FILENAME  ("/_DATABASE/_LIBTEMP")
-#define BOOKS_DIR         ("/")
+static const std::string HEADER_FILE = "_HEADER";
+#define DATABASE_DIR   ("/_DATABASE/")
+#define PAGINATION_DIR ("/_DATABASE/_PAGES/")
+#define LIBRARY_DIR    ("/_DATABASE/_LIBRARY/")
+#define BACKUP_DIR     ("/_DATABASE/_LIBBACK/")
+#define WORKING_DIR    ("/_DATABASE/_LIBTEMP/")
+#define BOOKS_DIR      ("/")
 
-#define DATABASE_VERSION  (0x0000)
+#define DATABASE_VERSION  (0x0001)
+
+static const uint16_t MAX_BOOKS = 15;
 
 static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
 static const int TXT_EXTENSION = 1954051118;
@@ -47,7 +50,7 @@ typedef struct {
 
 typedef struct {
     char filename[128];
-    uint64_t fileHash = 0;
+    char fileHash[64];
     uint64_t fileSize = 0;
     uint64_t textStart = 0;
     uint64_t currentPosition = 0;
@@ -58,10 +61,7 @@ typedef struct {
 typedef struct {
     uint64_t flags = 0;
     uint32_t version = DATABASE_VERSION;
-    uint16_t reserved1 = 0;
-    uint32_t numBooks = 0;
-    uint32_t reserved2 = 0;
-    uint64_t reserved3 = 0;
+    uint16_t numBooks = 0;
 } BookDatabaseHeader;
 
 // structs for the .pag pagination files
@@ -127,7 +127,7 @@ protected:
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
     const char* _getPaginationFilename(BookRecord record);
     const char* _getCurrentPageFilename(BookRecord record);
-    uint32_t numBooks = 0;
+    uint16_t numBooks = 0;
 private:
     OpenBookDatabase();
 };

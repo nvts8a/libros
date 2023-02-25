@@ -272,10 +272,6 @@ bool OpenBookDevice::fileExists(const char *path) {
     return this->sd->exists(path);
 }
 
-bool OpenBookDevice::makeDirectory(const char *path) {
-    return this->sd->mkdir(path);
-}
-
 File OpenBookDevice::openFile(const char *path, oflag_t oflag) {
     return this->sd->open(path, oflag);
 }
@@ -286,4 +282,29 @@ bool OpenBookDevice::renameFile(const char *oldPath, const char *newPath) {
 
 bool OpenBookDevice::removeFile(const char *path) {
     return this->sd->remove(path);
+}
+
+bool OpenBookDevice::makeDirectory(const char *path) {
+    return this->sd->mkdir(path);
+}
+
+bool OpenBookDevice::removeDirectory(const char *path) {
+    return this->sd->rmdir(path);
+}
+
+bool OpenBookDevice::removeDirectoryRecursive(const char *path) {
+    File directory = this->sd->open(path);
+    File child = directory.openNextFile();
+    char childFilename[128];
+
+    // TODO: Cleanup there's a better way
+    while (child) {
+        child.getName(childFilename, 128);
+        std::string fullChildFilename = path + (std::string)childFilename;
+        child.close(); this->sd->remove(fullChildFilename.c_str());
+        child = directory.openNextFile();
+    }
+    directory.close();
+
+    return this->sd->rmdir(path);
 }
