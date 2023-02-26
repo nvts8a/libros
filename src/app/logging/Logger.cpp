@@ -2,7 +2,7 @@
 #include <chrono>
 
 Logger::Logger() {
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    OpenBookDevice *device = OpenBookDevice::sharedDevice(); // TODO: Maybe make this part of device since it's dependant on it
     if (device->fileExists(logFilename)) {
         logFile = device->openFile(logFilename, O_RDWR | O_TRUNC);
     } else logFile = device->openFile(logFilename, O_RDWR | O_CREAT);

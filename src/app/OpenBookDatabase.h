@@ -10,21 +10,17 @@ static const std::string HEADER_FILE = "_HEADER";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
 static const std::string OBP_FILE = "/_OBP";
-#define DATABASE_DIR   ("/_DATABASE/")
-#define PAGINATION_DIR ("/_DATABASE/_PAGES/")
-#define LIBRARY_DIR    ("/_DATABASE/_LIBRARY/")
-#define BACKUP_DIR     ("/_DATABASE/_LIBBACK/")
-#define WORKING_DIR    ("/_DATABASE/_LIBTEMP/")
+#define LIBRARY_DIR    ("/_LIBRARY/")
+#define BACKUP_DIR     ("/_LIBBACK/")
+#define WORKING_DIR    ("/_LIBTEMP/")
 #define BOOKS_DIR      ("/")
 
-#define DATABASE_VERSION  (0x0001)
+#define DATABASE_VERSION  (0x0002)
 
 static const uint16_t MAX_BOOKS = 15;
 
 static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
 static const int TXT_EXTENSION = 1954051118;
-static const std::string PAG_EXTENSION = ".pag";
-static const std::string OBP_EXTENSION = ".obp";
 
 // Header
 static const int HEADER_TAG_COUNT  = 5;

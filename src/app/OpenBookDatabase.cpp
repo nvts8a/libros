@@ -1,4 +1,5 @@
 #include "OpenBookDatabase.h"
+#include "Logger.h"
 #include "sha256.h"
 #include <map>
 
@@ -11,6 +12,7 @@ OpenBookDatabase::OpenBookDatabase() {}
 */
 bool OpenBookDatabase::connect() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    Logger::l()->info("Connecting to the OpenBook database...");
     File database = this->_findOrCreateLibraryFile(device);
 
     uint64_t magic;
@@ -19,8 +21,12 @@ bool OpenBookDatabase::connect() {
     database.read((byte *)&header, sizeof(BookDatabaseHeader));
     database.close();
 
-    if (magic != DATABASE_FILE_IDENTIFIER)  return false;
-    if (header.version != DATABASE_VERSION) return false;
+    if (magic != DATABASE_FILE_IDENTIFIER || header.version != DATABASE_VERSION) {
+        Logger::l()->error("Failed to connect to the OpenBook database.");
+        return false;
+    }
+
+    Logger::l()->info("Successfully connected to the OpenBook database.");
     return true;
 }
 
@@ -33,9 +39,7 @@ bool OpenBookDatabase::connect() {
  * @return The library header file
 */
 File OpenBookDatabase::_findOrCreateLibraryFile(OpenBookDevice* device) {
-    if (!device->fileExists(DATABASE_DIR))   device->makeDirectory(DATABASE_DIR);
-    if (!device->fileExists(PAGINATION_DIR)) device->makeDirectory(PAGINATION_DIR);
-    if (!device->fileExists(BOOKS_DIR))      device->makeDirectory(BOOKS_DIR); // TODO: Bulletproof this by ignoring case
+    if (!device->fileExists(BOOKS_DIR)) device->makeDirectory(BOOKS_DIR); // TODO: Bulletproof this by ignoring case
 
     if (!device->fileExists(LIBRARY_DIR)) {
         if (device->fileExists(BACKUP_DIR)) {
@@ -508,27 +512,19 @@ std::string OpenBookDatabase::getTextForPage(BookRecord record, uint32_t page) {
 }
 
 /**
- * This method takes in a BookRecord and using it's filename, removes the extension,
- *  and constructs a string using it, the pagination database directory, and the pag extension.
+ * This method takes in a BookRecord and using it's file hash, constructs a string of its pages file location
  * @param  record The BookRecord object you're attempting to get the pagination file for
  * @return A char array of BookRecords pagination file location
  */
 const char* OpenBookDatabase::_getPaginationFilename(BookRecord record) {
-    std::string bookFilename = record.filename;
-    bookFilename = bookFilename.substr(0, strlen(record.filename) - 4);
-
-    return (PAGINATION_DIR + bookFilename + PAG_EXTENSION).c_str();
+    return (LIBRARY_DIR + std::string(record.fileHash) + PAGES_FILE).c_str();
 }
 
 /**
- * This method takes in a BookRecord and using it's filename, removes the extension,
- *  and constructs a string using it, the pagination database directory, and the obp extension.
+ * This method takes in a BookRecord and using it's file hash, constructs a string of its OBP file location
  * @param  record The BookRecord object you're attempting to get the current file for
  * @return A char array of BookRecords current page file location
  */
 const char* OpenBookDatabase::_getCurrentPageFilename(BookRecord record) {
-    std::string bookFilename = record.filename;
-    bookFilename = bookFilename.substr(0, strlen(record.filename) - 4);
-
-    return (PAGINATION_DIR + bookFilename + OBP_EXTENSION).c_str();
+    return (LIBRARY_DIR + std::string(record.fileHash) + OBP_FILE).c_str();
 }
