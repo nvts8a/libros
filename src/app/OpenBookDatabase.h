@@ -6,6 +6,7 @@
 #include <vector>
 #include "OpenBookDevice.h"
 
+static const std::string BOOKS_DIR = "/";
 static const std::string HEADER_FILE = "_HEADER";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
@@ -13,7 +14,6 @@ static const std::string OBP_FILE = "/_OBP";
 #define LIBRARY_DIR    ("/_LIBRARY/")
 #define BACKUP_DIR     ("/_LIBBACK/")
 #define WORKING_DIR    ("/_LIBTEMP/")
-#define BOOKS_DIR      ("/")
 
 #define DATABASE_VERSION  (0x0002)
 
@@ -53,7 +53,6 @@ typedef struct {
     char fileHash[64];
     uint64_t fileSize = 0;
     uint64_t textStart = 0;
-    uint16_t currentPosition = 0;
     uint64_t flags = 0;
     BookField metadata[HEADER_TAG_COUNT];
 } BookRecord;
@@ -61,7 +60,6 @@ typedef struct {
 typedef struct {
     uint64_t flags = 0;
     uint32_t version = DATABASE_VERSION;
-    uint16_t numBooks = 0;
 } BookDatabaseHeader;
 
 // structs for the .pag pagination files
@@ -120,11 +118,13 @@ public:
 
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
-    File _findOrCreateLibraryFile(OpenBookDevice* device);
+    File _findOrCreateLibraryFile();
+    void _processNewTxtFiles();
+    void _writeNewBookRecordFiles();
     bool _fileIsTxt(File entry);
     void _setFileHash(char* fileHash, File entry);
     bool _hasHeader(File entry);
-    BookRecord _processBookFile(File entry, uint16_t currentPosition);
+    BookRecord _processBookFile(File entry, char* fileHash);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
     const char* _getPaginationFilename(BookRecord record);
     const char* _getCurrentPageFilename(BookRecord record);

@@ -11,9 +11,8 @@ OpenBookDatabase::OpenBookDatabase() {}
  * @return A boolean if the OpenBookDatabase of if the database is present and valid
 */
 bool OpenBookDatabase::connect() {
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
     Logger::l()->info("Connecting to the OpenBook database...");
-    File database = this->_findOrCreateLibraryFile(device);
+    File database = this->_findOrCreateLibraryFile();
 
     uint64_t magic;
     BookDatabaseHeader header;
@@ -35,11 +34,11 @@ bool OpenBookDatabase::connect() {
  *  Recovers from a backup if a backup is present, creates the library header binary if one doesn't exist,
  *  then cleans up working and backup files, if present.
  * Then loads the library header file and returns it.
- * @param  device The OpenBook hardware device
  * @return The library header file
 */
-File OpenBookDatabase::_findOrCreateLibraryFile(OpenBookDevice* device) {
-    if (!device->fileExists(BOOKS_DIR)) device->makeDirectory(BOOKS_DIR); // TODO: Bulletproof this by ignoring case
+File OpenBookDatabase::_findOrCreateLibraryFile() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    if (!device->fileExists(BOOKS_DIR.c_str())) device->makeDirectory(BOOKS_DIR.c_str()); // TODO: Bulletproof this by ignoring case
 
     if (!device->fileExists(LIBRARY_DIR)) {
         if (device->fileExists(BACKUP_DIR)) {
@@ -64,50 +63,70 @@ File OpenBookDatabase::_findOrCreateLibraryFile(OpenBookDevice* device) {
 }
 
 /**
- * Takes in the configured directory for books and iterates over every file,
- *  if the file is ends in .txt, it'll process that file and add it to the library binary
- *  then writing a header and the book records in the binary to disk.
+ * Runs the method to indentify new text files in the BOOKS dir and processes them
  * @return TODO: is this needed?
 */
 bool OpenBookDatabase::scanForNewBooks() {
+    Logger::l()->info("Scanning " + BOOKS_DIR + " for new books.");
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    // TODO: scan the existing database for book progress and store it in a map
+    this->_processNewTxtFiles();
+    this->_writeNewBookRecordFiles();
+    Logger::l()->info("Completed scanning " + BOOKS_DIR + " for new books.");
+    return true;
+}
 
-    // Find books, increment the count, and process them
-    File root = device->openFile(BOOKS_DIR);
+/**
+ * Using the BOOKS dir, looks at all files in it. Then, using the files hash, if the BookRecord files
+ *  already exist in the LIBRARY dir, will read in that BookRecord into the active Database vector.
+ *  If it doesn't yet exist, will process that new text file into an active BookRecord.
+*/
+void OpenBookDatabase::_processNewTxtFiles() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    File root = device->openFile(BOOKS_DIR.c_str());
     File entry;
-    uint16_t entryCount = 0;
+
     while (entry = root.openNextFile()) {
-        if (this->_fileIsTxt(entry)) this->Records.push_back(this->_processBookFile(entry, ++entryCount));
+        if (this->_fileIsTxt(entry)) {
+            char fileHash[64]; _setFileHash(fileHash, entry);
+            std::string bookRecordDirectory = LIBRARY_DIR + std::string(fileHash);
+
+            if (device->fileExists(bookRecordDirectory.c_str())) {
+                this->Records.push_back(this->getBookRecord(fileHash));
+            } else this->Records.push_back(this->_processBookFile(entry, fileHash));
+        }
         entry.close();
     }
+}
 
-    // Now that we have all the data processed we can write the Library files
+/**
+ * Using the Database's vector of BookRecords, will either move those BookRecords to the WORKING dir,
+ *  or create new BookRecords for them. Then renames the WORKING dir to the LIBRARY dir. It does this
+ *  such that any old BookRecords will be cleaned up. TODO: Find a more performant way to do this.
+*/
+void OpenBookDatabase::_writeNewBookRecordFiles() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
     device->makeDirectory(WORKING_DIR);
-    BookDatabaseHeader header;
-    header.numBooks = this->Records.size();
 
-    for(int i = 0; i < min(MAX_BOOKS, (uint16_t)this->Records.size()); i++) {
+    for (int i = 0; i < min(MAX_BOOKS, (uint16_t)this->Records.size()); i++) {
         std::string tempBookDirectory = WORKING_DIR + std::string(this->Records[i].fileHash);
-        std::string tempBookFilename = tempBookDirectory + BOOK_FILE;
-        device->makeDirectory(tempBookDirectory.c_str());
-        File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
-        tempBook.write((byte *)&this->Records[i], sizeof(BookRecord));
-        tempBook.flush(); tempBook.close();
+        std::string libraryBookDirectory = LIBRARY_DIR + std::string(this->Records[i].fileHash);
+        if (device->fileExists(libraryBookDirectory.c_str())) {
+            Logger::l()->debug("Current BookRecord found, moving: " + libraryBookDirectory + " to " + tempBookDirectory);
+            device->renameFile(libraryBookDirectory.c_str(), tempBookDirectory.c_str());
+        } else {
+            std::string tempBookFilename = tempBookDirectory + BOOK_FILE;
+            Logger::l()->info("Writing new BookRecord to: " + tempBookFilename);
+            device->makeDirectory(tempBookDirectory.c_str());
+            File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
+            tempBook.write((byte *)&this->Records[i], sizeof(BookRecord));
+            tempBook.flush(); tempBook.close();
+        }
     }
-
-    std::string tempHeaderFilename = WORKING_DIR + HEADER_FILE;
-    File tempHeader = device->openFile(tempHeaderFilename.c_str(), O_RDWR | O_CREAT);
-    tempHeader.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-    tempHeader.write((byte *)&header, sizeof(BookDatabaseHeader));
-    tempHeader.flush(); tempHeader.close();
     
     // Persist and clean up files
     device->renameFile(LIBRARY_DIR, BACKUP_DIR);
     device->renameFile(WORKING_DIR, LIBRARY_DIR);
     device->removeDirectoryRecursive(BACKUP_DIR);
-
-    return true;
 }
 
 /**
@@ -131,21 +150,21 @@ bool OpenBookDatabase::_fileIsTxt(File entry) {
  * This method takes a file, already determined to be a text file, and will
  *  appropriately process it into a BookRecord.
  * @param entry A text file to be created into a BookRecord
+ * @param fileHash A unique representation of the file to be used as the directory
  * @return A successfully processed BookRecord
 */
-BookRecord OpenBookDatabase::_processBookFile(File entry, uint16_t currentPosition) {
-    SHA256 sha256;
+BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
+    Logger::l()->info("Processing new BookRecord: " + std::string(fileHash));
+    //SHA256 sha256;
     BookRecord record = {0};
 
     // Copy file data to BookRecord
     entry.getName(record.filename, 128);
-    this->_setFileHash(record.fileHash, entry);
+    strcpy(record.fileHash, fileHash);
     record.fileSize = entry.size();
-    record.currentPosition = currentPosition;
 
     if (this->_hasHeader(entry)) {  // if file is a text file AND it has front matter, parse the front matter.
         entry.seekSet(4);
-
         bool done = false;
         while (!done) {
             uint32_t tag;
