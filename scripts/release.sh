@@ -5,4 +5,4 @@ git ci -m "[${1}] ${2}"
 git push
 
 git tag v${1}
-git push v${1}
+git push origin v${1}
