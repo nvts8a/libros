@@ -18,7 +18,6 @@ public:
 protected:
     virtual void createView() override;
 
-    std::vector<BookRecord> books;
     BookRecord currentBook = {0};
 
     std::shared_ptr<OpenBookTable> table;

@@ -9,13 +9,10 @@ void BookListViewController::viewWillAppear() {
 
     // update books whenever the view appears
     std::vector<std::string> titles;
-    uint32_t numBooks = OpenBookDatabase::sharedDatabase()->getNumberOfBooks();
 
-    for (uint32_t i = 0 ; i < numBooks ; i++) {
-        BookRecord record = OpenBookDatabase::sharedDatabase()->getBookRecord(i);
-        std::string title = OpenBookDatabase::sharedDatabase()->getBookTitle(record);
+    for (uint32_t i = 0 ; i < OpenBookDatabase::sharedDatabase()->getBookRecords().size() ; i++) {
+        std::string title = OpenBookDatabase::sharedDatabase()->getBookTitle(OpenBookDatabase::sharedDatabase()->getBookRecords()[i]);
         titles.push_back(title);
-        this->books.push_back(record);
     }
 
     this->table->setItems(titles);
@@ -47,7 +44,7 @@ void BookListViewController::createView() {
 
 void BookListViewController::selectBook(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        this->currentBook = this->books[event.userInfo];
+        this->currentBook = OpenBookDatabase::sharedDatabase()->getBookRecords()[event.userInfo];
 
         if (OpenBookDatabase::sharedDatabase()->bookIsPaginated(this->currentBook)) {
             this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&this->currentBook);

@@ -1,7 +1,6 @@
 #include "OpenBookDatabase.h"
 #include "sha256.h"
 #include <map>
-#include <vector>
 
 OpenBookDatabase::OpenBookDatabase() {}
 
@@ -22,8 +21,6 @@ bool OpenBookDatabase::connect() {
 
     if (magic != DATABASE_FILE_IDENTIFIER)  return false;
     if (header.version != DATABASE_VERSION) return false;
-
-    this->numBooks = header.numBooks;
     return true;
 }
 
@@ -75,25 +72,23 @@ bool OpenBookDatabase::scanForNewBooks() {
     // Find books, increment the count, and process them
     File root = device->openFile(BOOKS_DIR);
     File entry;
-    std::vector <BookRecord>Records;
-    uint16_t numBooks = 0;
+    uint16_t entryCount = 0;
     while (entry = root.openNextFile()) {
-        if (this->_fileIsTxt(entry)) {
-            numBooks++;
-            Records.push_back(this->_processBookFile(entry));
-        }
+        if (this->_fileIsTxt(entry)) this->Records.push_back(this->_processBookFile(entry, ++entryCount));
         entry.close();
     }
 
     // Now that we have all the data processed we can write the Library files
     device->makeDirectory(WORKING_DIR);
     BookDatabaseHeader header;
-    header.numBooks = this->numBooks = numBooks;
+    header.numBooks = this->Records.size();
 
-    for(int i = 0; i < min(MAX_BOOKS, (uint16_t)Records.size()); i++) {
-        std::string tempBookFilename = WORKING_DIR + std::to_string(i);
+    for(int i = 0; i < min(MAX_BOOKS, (uint16_t)this->Records.size()); i++) {
+        std::string tempBookDirectory = WORKING_DIR + std::string(this->Records[i].fileHash);
+        std::string tempBookFilename = tempBookDirectory + BOOK_FILE;
+        device->makeDirectory(tempBookDirectory.c_str());
         File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
-        tempBook.write((byte *)&Records[i], sizeof(BookRecord));
+        tempBook.write((byte *)&this->Records[i], sizeof(BookRecord));
         tempBook.flush(); tempBook.close();
     }
 
@@ -134,15 +129,15 @@ bool OpenBookDatabase::_fileIsTxt(File entry) {
  * @param entry A text file to be created into a BookRecord
  * @return A successfully processed BookRecord
 */
-BookRecord OpenBookDatabase::_processBookFile(File entry) {
+BookRecord OpenBookDatabase::_processBookFile(File entry, uint16_t currentPosition) {
     SHA256 sha256;
     BookRecord record = {0};
 
     // Copy file data to BookRecord
     entry.getName(record.filename, 128);
-    memcpy((void *)&record.fileHash, sha256(std::string(record.filename)).c_str(), sizeof(record.fileHash));
+    this->_setFileHash(record.fileHash, entry);
     record.fileSize = entry.size();
-    record.currentPosition = 0; // TODO: copy from map
+    record.currentPosition = currentPosition;
 
     if (this->_hasHeader(entry)) {  // if file is a text file AND it has front matter, parse the front matter.
         entry.seekSet(4);
@@ -206,6 +201,14 @@ BookRecord OpenBookDatabase::_processBookFile(File entry) {
     return record;
 }
 
+void OpenBookDatabase::_setFileHash(char* fileHash, File file) {
+    char filename[64] = {0};
+    file.getName(filename, 64);
+    for (int i = 0; i < 64; i++) {
+        fileHash[i] = toupper(filename[i]);
+    }
+}
+
 /**
  * Determines if a file has a BookRecord Header Block by
  *  seeing if the first four characters are "---\n"
@@ -222,14 +225,13 @@ bool OpenBookDatabase::_hasHeader(File entry) {
     return (magic == HEADER_DELIMITER);
 }
 
-uint32_t OpenBookDatabase::getNumberOfBooks() {
-    return this->numBooks;
+std::vector<BookRecord, std::allocator<BookRecord>> OpenBookDatabase::getBookRecords() {
+    return this->Records;
 }
 
-BookRecord OpenBookDatabase::getBookRecord(uint32_t i) {
+BookRecord OpenBookDatabase::getBookRecord(char* fileHash) {
     BookRecord bookRecord;
-    //std::string bookRecordFilename = LIBRARY_DIR + std::to_string(this->bookShas[i]);
-    std::string bookRecordFilename = LIBRARY_DIR + std::to_string(i);
+    std::string bookRecordFilename = LIBRARY_DIR + std::string(fileHash) + BOOK_FILE;
     File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecordFilename.c_str());
     bookFile.read((byte *)&bookRecord, sizeof(BookRecord));
     bookFile.close();

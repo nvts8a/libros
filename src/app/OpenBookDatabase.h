@@ -3,9 +3,13 @@
 
 #include <stdint.h>
 #include <string>
+#include <vector>
 #include "OpenBookDevice.h"
 
 static const std::string HEADER_FILE = "_HEADER";
+static const std::string PAGES_FILE = "/_PAGES";
+static const std::string BOOK_FILE = "/_BOOK";
+static const std::string OBP_FILE = "/_OBP";
 #define DATABASE_DIR   ("/_DATABASE/")
 #define PAGINATION_DIR ("/_DATABASE/_PAGES/")
 #define LIBRARY_DIR    ("/_DATABASE/_LIBRARY/")
@@ -53,7 +57,7 @@ typedef struct {
     char fileHash[64];
     uint64_t fileSize = 0;
     uint64_t textStart = 0;
-    uint64_t currentPosition = 0;
+    uint16_t currentPosition = 0;
     uint64_t flags = 0;
     BookField metadata[HEADER_TAG_COUNT];
 } BookRecord;
@@ -102,8 +106,8 @@ public:
     // Methods for working with the main _LIBRARY file
     bool connect();
     bool scanForNewBooks();
-    uint32_t getNumberOfBooks();
-    BookRecord getBookRecord(uint32_t i);
+    std::vector<BookRecord, std::allocator<BookRecord>> getBookRecords();
+    BookRecord getBookRecord(char* fileHash);
     std::string getBookTitle(BookRecord record);
     std::string getBookAuthor(BookRecord record);
     std::string getBookDescription(BookRecord record);
@@ -122,12 +126,14 @@ public:
 protected:
     File _findOrCreateLibraryFile(OpenBookDevice* device);
     bool _fileIsTxt(File entry);
+    void _setFileHash(char* fileHash, File entry);
     bool _hasHeader(File entry);
-    BookRecord _processBookFile(File entry);
+    BookRecord _processBookFile(File entry, uint16_t currentPosition);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
     const char* _getPaginationFilename(BookRecord record);
     const char* _getCurrentPageFilename(BookRecord record);
-    uint16_t numBooks = 0;
+
+    std::vector <BookRecord>Records;
 private:
     OpenBookDatabase();
 };

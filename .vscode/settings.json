@@ -71,6 +71,7 @@
         "iostream": "cpp",
         "mstd_iterator": "cpp",
         "any": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "csignal": "cpp"
     },
 }
