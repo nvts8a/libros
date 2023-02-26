@@ -1,4 +1,5 @@
 #include "OpenBookApplication.h"
+#include "Logger.h"
 #include "OpenBookTasks.h"
 #include "OpenBookEvents.h"
 #include "BookReaderViewController.h"

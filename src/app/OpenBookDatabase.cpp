@@ -205,7 +205,9 @@ void OpenBookDatabase::_setFileHash(char* fileHash, File file) {
     char filename[64] = {0};
     file.getName(filename, 64);
     for (int i = 0; i < 64; i++) {
-        fileHash[i] = toupper(filename[i]);
+        if(filename[i] == '-' || filename[i] == ' ' || filename[i] == '.') {
+            fileHash[i] = '_';
+        } else fileHash[i] = toupper(filename[i]);
     }
 }
 

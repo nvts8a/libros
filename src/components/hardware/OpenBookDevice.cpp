@@ -1,3 +1,4 @@
+#include "Logger.h"
 #include "OpenBookDevice.h"
 #include "OpenBook_IL0398.h"
 #include "sleep.h"
@@ -277,34 +278,57 @@ File OpenBookDevice::openFile(const char *path, oflag_t oflag) {
 }
 
 bool OpenBookDevice::renameFile(const char *oldPath, const char *newPath) {
-    return this->sd->rename(oldPath, newPath);
+    if(!this->sd->rename(oldPath, newPath)) {
+        Logger::l()->error("Failed to rename file: " + std::string(oldPath) + " to " + std::string(newPath));
+        return false;
+    } else return true;
 }
 
 bool OpenBookDevice::removeFile(const char *path) {
-    return this->sd->remove(path);
+    if(!this->sd->remove(path)) {
+        Logger::l()->error("Failed to remove file: " + std::string(path));
+        return false;
+    } else return true;
 }
 
 bool OpenBookDevice::makeDirectory(const char *path) {
-    return this->sd->mkdir(path);
+    if(!this->sd->mkdir(path)) {
+        Logger::l()->error("Failed to make directory: " + std::string(path));
+        return false;
+    } else return true;
 }
 
 bool OpenBookDevice::removeDirectory(const char *path) {
-    return this->sd->rmdir(path);
+    if(!this->sd->rmdir(path)) {
+        Logger::l()->error("Failed to delete directory: " + std::string(path));
+        return false;
+    } else return true;
 }
 
 bool OpenBookDevice::removeDirectoryRecursive(const char *path) {
+    Logger::l()->debug("Attempting to recursively delete directory: " + std::string(path));
     File directory = this->sd->open(path);
     File child = directory.openNextFile();
-    char childFilename[128];
+    char childFilename[256];
 
-    // TODO: Cleanup there's a better way
+    // TODO: Cleanup there's a better way. There must be?
     while (child) {
-        child.getName(childFilename, 128);
-        std::string fullChildFilename = path + (std::string)childFilename;
-        child.close(); this->sd->remove(fullChildFilename.c_str());
+        child.getName(childFilename, 256);
+        std::string fullChildFilename = path + std::string(childFilename);
+
+        if(child.isDirectory()) {
+            Logger::l()->debug("Attempting to delete child directory: " + fullChildFilename);
+            child.close();
+            removeDirectoryRecursive((fullChildFilename + '/').c_str());
+        } else {
+            Logger::l()->debug("Attempting to delete child file: " + fullChildFilename);
+            child.close();
+            this->sd->remove(fullChildFilename.c_str());
+        }
+
         child = directory.openNextFile();
     }
     directory.close();
 
-    return this->sd->rmdir(path);
+    return this->removeDirectory(path);
 }
