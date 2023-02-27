@@ -155,7 +155,6 @@ bool OpenBookDatabase::_fileIsTxt(File entry) {
 */
 BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
     Logger::l()->info("Processing new BookRecord: " + std::string(fileHash));
-    //SHA256 sha256;
     BookRecord record = {0};
 
     // Copy file data to BookRecord
@@ -224,14 +223,21 @@ BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
     return record;
 }
 
+/**
+ * Creates a 64 byte SHA256 of the first 512 bytes of a book file.
+ *  This is used as the idenitifier for the book.
+ * TODO: This could be better, can you take in an entire file?
+ * @param fileHash The 64 byte char array of the file hash value
+ * @param file The file to be hashed
+*/
 void OpenBookDatabase::_setFileHash(char* fileHash, File file) {
-    char filename[64] = {0};
-    file.getName(filename, 64);
-    for (int i = 0; i < 64; i++) {
-        if(filename[i] == '-' || filename[i] == ' ' || filename[i] == '.') {
-            fileHash[i] = '_';
-        } else fileHash[i] = toupper(filename[i]);
-    }
+    SHA256 sha256;
+    char fileBytes[512];  file.readBytes(fileBytes, 512); file.seekSet(0);
+    char filename[64];    file.getName(filename, 64);
+    std::string fileSha = sha256(fileBytes, 64).substr(0, 63);
+
+    Logger::l()->debug("File hash for " + std::string(filename) + " determined to be: " + fileSha);
+    strcpy(fileHash, fileSha.c_str());
 }
 
 /**
