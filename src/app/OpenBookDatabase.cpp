@@ -154,11 +154,14 @@ bool OpenBookDatabase::_fileIsTxt(File entry) {
  * @return A successfully processed BookRecord
 */
 BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
-    Logger::l()->info("Processing new BookRecord: " + std::string(fileHash));
     BookRecord record = {0};
 
     // Copy file data to BookRecord
-    entry.getName(record.filename, 128);
+    char bookFilename[128]; entry.getName(bookFilename, 128);
+    std::string bookPath = BOOKS_DIR + '/' + std::string(bookFilename);
+
+    Logger::l()->info("Processing new BookRecord: " + bookPath + '-' + std::string(fileHash));
+    strcpy(record.filename, bookPath.c_str());
     strcpy(record.fileHash, fileHash);
     record.fileSize = entry.size();
 

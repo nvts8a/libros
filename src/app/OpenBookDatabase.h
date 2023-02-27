@@ -6,16 +6,16 @@
 #include <vector>
 #include "OpenBookDevice.h"
 
-static const std::string BOOKS_DIR = "/";
 static const std::string HEADER_FILE = "_HEADER";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
 static const std::string OBP_FILE = "/_OBP";
+static const std::string BOOKS_DIR = "/BOOKS";
 #define LIBRARY_DIR    ("/_LIBRARY/")
 #define BACKUP_DIR     ("/_LIBBACK/")
 #define WORKING_DIR    ("/_LIBTEMP/")
 
-#define DATABASE_VERSION  (0x0002)
+#define DATABASE_VERSION  (0x0003)
 
 static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
