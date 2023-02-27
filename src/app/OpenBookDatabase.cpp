@@ -107,7 +107,7 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     device->makeDirectory(WORKING_DIR);
 
-    for (int i = 0; i < min(MAX_BOOKS, (uint16_t)this->Records.size()); i++) {
+    for (uint16_t i = 0; i < this->Records.size(); i++) {
         std::string tempBookDirectory = WORKING_DIR + std::string(this->Records[i].fileHash);
         std::string libraryBookDirectory = LIBRARY_DIR + std::string(this->Records[i].fileHash);
         if (device->fileExists(libraryBookDirectory.c_str())) {
@@ -256,10 +256,37 @@ bool OpenBookDatabase::_hasHeader(File entry) {
     return (magic == HEADER_DELIMITER);
 }
 
+/**
+ * @return A vector of all the current BookRecords in memory
+*/
 std::vector<BookRecord, std::allocator<BookRecord>> OpenBookDatabase::getBookRecords() {
     return this->Records;
 }
 
+/**
+ * Constructs the list of titles for the provided library page
+ * @param page The page you want titles for
+ * @return A vector of strings of titles for the provided page
+*/
+std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
+    std::vector<std::string> titles;
+    uint16_t pageStart = LIBRARY_PAGE_SIZE * page;
+    uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, this->Records.size());
+
+    for (int i = pageStart; i < pageEnd; i++) {
+        std::string title = this->getBookTitle(this->Records[i]);
+        std::string author = this->getBookAuthor(this->Records[i]);
+        if (author != "") title += " by " + author;
+
+        titles.push_back(title.substr(0, 35));
+    }
+
+    return titles;
+}
+
+/**
+ * 
+*/
 BookRecord OpenBookDatabase::getBookRecord(char* fileHash) {
     BookRecord bookRecord;
     std::string bookRecordFilename = LIBRARY_DIR + std::string(fileHash) + BOOK_FILE;

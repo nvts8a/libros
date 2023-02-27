@@ -4,12 +4,10 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-static const char* logFilename = "/.openbook.log";
-static const uint16_t logLevel = 2; // TODO: have this app conf configurable
-static const std::string levelDebug = " [DEBUG] ";
-static const std::string levelInfo  = " [INFO]  ";
-static const std::string levelWarn  = " [WARN]  ";
-static const std::string levelError = " [ERROR] ";
+static const std::string DEBUG = " [DEBUG] ";
+static const std::string INFO  = " [INFO]  ";
+static const std::string WARN  = " [WARN]  ";
+static const std::string ERROR = " [ERROR] ";
 
 class Logger {
 public:
@@ -25,6 +23,7 @@ protected:
     void _log(std::string logLine);
     std::string _getTimestamp();
     File logFile;
+    uint16_t logLevel = 2; // TODO: have this app conf configurable
 private:
     Logger();
 };

@@ -3,30 +3,31 @@
 
 Logger::Logger() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice(); // TODO: Maybe make this part of device since it's dependant on it
+    const char logFilename[14] = { '/', '.', 'o', 'p', 'e', 'n', 'b', 'o', 'o', 'k', '.', 'l', 'o', 'g' };
     if (device->fileExists(logFilename)) {
         logFile = device->openFile(logFilename, O_RDWR | O_APPEND);
     } else logFile = device->openFile(logFilename, O_RDWR | O_CREAT);
 }
 
 void Logger::debug(std::string logLine) {
-    if (logLevel <= 1) Logger::_log(levelDebug + logLine);
+    if (this->logLevel <= 1) Logger::_log(DEBUG + logLine);
 }
 
 void Logger::info(std::string logLine) {
-    if (logLevel <= 2) Logger::_log(levelInfo + logLine);
+    if (this->logLevel <= 2) Logger::_log(INFO + logLine);
 }
 
 void Logger::warn(std::string logLine) {
-    if (logLevel <= 3) Logger::_log(levelWarn + logLine);
+    if (this->logLevel <= 3) Logger::_log(WARN + logLine);
 }
 
 void Logger::error(std::string logLine) {
-    Logger::_log(levelError + logLine);
+    Logger::_log(ERROR + logLine);
 }
 
 void Logger::_log(std::string logLine) {
     std::string timedLogLine = _getTimestamp() + logLine;
-    for(int i = 0; i < timedLogLine.size(); i++) logFile.write(timedLogLine[i]);
+    for(uint16_t i = 0; i < timedLogLine.size(); i++) logFile.write(timedLogLine[i]);
     logFile.write('\n'); logFile.flush();
 }
 

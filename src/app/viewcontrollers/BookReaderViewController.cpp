@@ -1,6 +1,5 @@
 #include "BookReaderViewController.h"
 #include "OpenBookEvents.h"
-#include "Logger.h"
 #include <sstream>
 
 BookReaderViewController::BookReaderViewController(std::shared_ptr<Application> application, BookRecord book) : ViewController(application) {
@@ -169,8 +168,4 @@ void BookReaderViewController::_getProgressLabelDetails() {
     int16_t calculatedPosition = (this->progressPercentage * 300) - (this->progressText.length() * 6);
     int16_t maxPosition = 300 - this->progressText.length();
     this->progressLabelXPos = min(max(0, calculatedPosition), maxPosition);
-
-    Logger::l()->debug("Updated Progress Label details- percentage: " + std::to_string(this->progressPercentage));
-    Logger::l()->debug("Updated Progress Label details- text: " + this->progressText);
-    Logger::l()->debug("Updated Progress Label details- label x-position: " + std::to_string(this->progressLabelXPos));
 }

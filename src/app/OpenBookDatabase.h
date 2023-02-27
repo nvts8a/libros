@@ -17,7 +17,7 @@ static const std::string OBP_FILE = "/_OBP";
 
 #define DATABASE_VERSION  (0x0002)
 
-static const uint16_t MAX_BOOKS = 15;
+static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
 static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
 static const int TXT_EXTENSION = 1954051118;
@@ -101,6 +101,7 @@ public:
     bool connect();
     bool scanForNewBooks();
     std::vector<BookRecord, std::allocator<BookRecord>> getBookRecords();
+    std::vector<std::string> getLibraryPage(uint16_t page);
     BookRecord getBookRecord(char* fileHash);
     std::string getBookTitle(BookRecord record);
     std::string getBookAuthor(BookRecord record);

@@ -4,18 +4,15 @@
 #include <sstream>
 #include <iomanip>
 
+BookListViewController::BookListViewController(std::shared_ptr<Application> application) : ViewController(application) {
+    this->numberOfBooks = OpenBookDatabase::sharedDatabase()->getBookRecords().size();
+    this->numberOfPages = this->numberOfBooks / LIBRARY_PAGE_SIZE;
+    this->_updatePagination();
+}
+
 void BookListViewController::viewWillAppear() {
     ViewController::viewWillAppear();
-
-    // update books whenever the view appears
-    std::vector<std::string> titles;
-
-    for (uint32_t i = 0 ; i < OpenBookDatabase::sharedDatabase()->getBookRecords().size() ; i++) {
-        std::string title = OpenBookDatabase::sharedDatabase()->getBookTitle(OpenBookDatabase::sharedDatabase()->getBookRecords()[i]);
-        titles.push_back(title);
-    }
-
-    this->table->setItems(titles);
+    this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
     this->updateBatteryIcon();
 }
 
@@ -38,13 +35,19 @@ void BookListViewController::createView() {
     this->view->addSubview(this->usbIcon);
     this->view->addSubview(this->voltageLabel);
 
+    this->pagination = std::make_shared<Label>(MakeRect(this->paginationLabelXPos, 400-40, 90, 8), this->paginationLabel);
+    this->view->addSubview(this->pagination);
+
     this->view->setAction(std::bind(&BookListViewController::selectBook, this, std::placeholders::_1), BUTTON_TAP);
     this->view->setAction(std::bind(&BookListViewController::updateBatteryIcon, this, std::placeholders::_1), OPEN_BOOK_EVENT_POWER_CHANGED);
+    this->view->setAction(std::bind(&BookListViewController::previousPage, this, std::placeholders::_1), BUTTON_PREV);
+    this->view->setAction(std::bind(&BookListViewController::nextPage, this, std::placeholders::_1), BUTTON_NEXT);
 }
 
 void BookListViewController::selectBook(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        this->currentBook = OpenBookDatabase::sharedDatabase()->getBookRecords()[event.userInfo];
+        uint16_t bookIndex = (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        this->currentBook = OpenBookDatabase::sharedDatabase()->getBookRecords()[bookIndex];
 
         if (OpenBookDatabase::sharedDatabase()->bookIsPaginated(this->currentBook)) {
             this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&this->currentBook);
@@ -91,4 +94,55 @@ void BookListViewController::updateBatteryIcon(Event event) {
     std::stringstream ss;
     ss << std::right << std::setw(4) << std::setprecision(3) << systemVoltage << " V";
     this->voltageLabel->setText(ss.str());
+}
+
+/**
+ * Increments the library page if it hasn't hit it's max,
+ *  then refreshes only if there was a page change
+ * @param event UNUSED
+*/
+void BookListViewController::nextPage(Event event) {
+    if (this->currentPage < this->numberOfPages) {
+        this->currentPage++;
+        this->_updateView();
+    }
+}
+
+/**
+ * Decrements the library page if it hasn't hit it's min,
+ *  then refreshes only if there was a page change
+ * @param event UNUSED
+*/
+void BookListViewController::previousPage(Event event) {
+    if (this->currentPage > 0) {
+        this->currentPage--;
+        this->_updateView();
+    }
+}
+
+/**
+ * Sets the current pages text to the visible book text, with custom size for chapters.
+ *  And updates the progress bar accordingly.
+*/
+void BookListViewController::_updateView() {
+    // Set current library page table items
+    this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
+
+    // Set pagination label
+    this->_updatePagination();
+    this->pagination->setText(this->paginationLabel);
+    this->pagination->setFrame(MakeRect(this->paginationLabelXPos, 400-40, 90, 8));
+}
+
+/**
+ * Updates the pagination label for view creation or when you switch pages
+*/
+void BookListViewController::_updatePagination() {
+    uint16_t pageStart = (LIBRARY_PAGE_SIZE * this->currentPage) + 1;
+    uint16_t pageEnd = min((pageStart + LIBRARY_PAGE_SIZE - 1), this->numberOfBooks);
+    std::string prefix = "   "; if (pageStart > 1)                 prefix = "<< ";
+    std::string suffix = "   "; if (pageEnd < this->numberOfBooks) suffix = " >>";
+    
+    this->paginationLabel = prefix + std::to_string(pageStart) + '-' + std::to_string(pageEnd) + " of " + std::to_string(numberOfBooks) + suffix;
+    this->paginationLabelXPos = 150 - ((this->paginationLabel.length() / 2) * 6);
 }

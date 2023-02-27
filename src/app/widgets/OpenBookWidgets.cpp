@@ -168,17 +168,26 @@ Rect OpenBookCell::_indicatorRect() {
     return {0};
 }
 
+/**
+ * 
+*/
 OpenBookTable::OpenBookTable(Rect rect, int16_t cellHeight, OpenBookCellSelectionStyle selectionStyle) : Control(rect) {
     this->selectionStyle = selectionStyle;
     this->cellHeight = cellHeight;
     this->cellsPerPage = rect.size.height / cellHeight;
 }
 
+/**
+ * 
+*/
 void OpenBookTable::setItems(std::vector<std::string> items) {
     this->items = items;
     this->updateCells();
 }
 
+/**
+ * 
+*/
 void OpenBookTable::updateCells() {
     this->subviews.clear();
 
@@ -193,8 +202,14 @@ void OpenBookTable::updateCells() {
     if (std::shared_ptr<Window> window = this->getWindow().lock()) {
         window->setNeedsDisplay(true);
     }
+
+    this->selectedIndex = 0;
+    this->subviews[this->selectedIndex]->becomeFocused();
 }
 
+/**
+ * 
+*/
 bool OpenBookTable::becomeFocused() {
     if (this->selectedIndex >= 0 && this->selectedIndex < ((int32_t)this->subviews.size())) {
         return this->subviews[this->selectedIndex]->becomeFocused();
@@ -203,10 +218,16 @@ bool OpenBookTable::becomeFocused() {
     return Control::becomeFocused();
 }
 
+/**
+ * 
+*/
 int32_t OpenBookTable::getSelectedIndex() {
     return this->selectedIndex;
 }
 
+/**
+ * 
+*/
 bool OpenBookTable::handleEvent(Event event) {
     if (event.type == BUTTON_TAP) {
         // if user selected an item in the table, add that user info to the event
