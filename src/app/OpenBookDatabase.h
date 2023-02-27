@@ -120,6 +120,7 @@ public:
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
     File _findOrCreateLibraryFile();
+    bool _copyTxtFilesToBookDirectory();
     void _processNewTxtFiles();
     void _writeNewBookRecordFiles();
     bool _fileIsTxt(File entry);

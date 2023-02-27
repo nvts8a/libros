@@ -69,11 +69,39 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
 bool OpenBookDatabase::scanForNewBooks() {
     Logger::l()->info("Scanning " + BOOKS_DIR + " for new books.");
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    this->_copyTxtFilesToBookDirectory();
     this->_processNewTxtFiles();
     this->_writeNewBookRecordFiles();
     Logger::l()->info("Completed scanning " + BOOKS_DIR + " for new books.");
     return true;
 }
+
+
+/**
+ * Moves any txt files from the root of the SD card to the correct location in the Books directory
+ * @return True if the the method moved any files
+*/
+bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+
+    bool movedFile = false;
+    char rootFilepath[1] = {'/'};
+    File root = device->openFile(rootFilepath);
+    File entry;
+
+    while (entry = root.openNextFile()) {
+        if (this->_fileIsTxt(entry)) {
+            char bookFilename[128]; entry.getName(bookFilename, 128);
+            std::string newBookPath = BOOKS_DIR + '/' + std::string(bookFilename);
+            Logger::l()->warn(std::string(bookFilename) + " found in the root of the SD card. Moving it to: " + newBookPath);
+
+            if(device->renameFile(bookFilename, newBookPath.c_str())) movedFile = true;
+        } entry.close();
+    } root.close();
+
+    return movedFile;
+}
+
 
 /**
  * Using the BOOKS dir, looks at all files in it. Then, using the files hash, if the BookRecord files
@@ -82,10 +110,10 @@ bool OpenBookDatabase::scanForNewBooks() {
 */
 void OpenBookDatabase::_processNewTxtFiles() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    File root = device->openFile(BOOKS_DIR.c_str());
+    File booksDirectory = device->openFile(BOOKS_DIR.c_str());
     File entry;
 
-    while (entry = root.openNextFile()) {
+    while (entry = booksDirectory.openNextFile()) {
         if (this->_fileIsTxt(entry)) {
             char fileHash[64]; _setFileHash(fileHash, entry);
             std::string bookRecordDirectory = LIBRARY_DIR + std::string(fileHash);
@@ -93,9 +121,8 @@ void OpenBookDatabase::_processNewTxtFiles() {
             if (device->fileExists(bookRecordDirectory.c_str())) {
                 this->Records.push_back(this->getBookRecord(fileHash));
             } else this->Records.push_back(this->_processBookFile(entry, fileHash));
-        }
-        entry.close();
-    }
+        } entry.close();
+    } booksDirectory.close();
 }
 
 /**
