@@ -11,7 +11,6 @@ OpenBookDatabase::OpenBookDatabase() {}
  * @return A boolean if the OpenBookDatabase of if the database is present and valid
 */
 bool OpenBookDatabase::connect() {
-    Logger::l()->info("Connecting to the OpenBook database...");
     File database = this->_findOrCreateLibraryFile();
 
     uint64_t magic;
@@ -20,12 +19,8 @@ bool OpenBookDatabase::connect() {
     database.read((byte *)&header, sizeof(BookDatabaseHeader));
     database.close();
 
-    if (magic != DATABASE_FILE_IDENTIFIER || header.version != DATABASE_VERSION) {
-        Logger::l()->error("Failed to connect to the OpenBook database.");
-        return false;
-    }
+    if (magic != DATABASE_FILE_IDENTIFIER || header.version != DATABASE_VERSION) return false;
 
-    Logger::l()->info("Successfully connected to the OpenBook database.");
     return true;
 }
 
@@ -67,12 +62,9 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
  * @return TODO: is this needed?
 */
 bool OpenBookDatabase::scanForNewBooks() {
-    Logger::l()->info("Scanning " + BOOKS_DIR + " for new books.");
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
     this->_copyTxtFilesToBookDirectory();
     this->_processNewTxtFiles();
     this->_writeNewBookRecordFiles();
-    Logger::l()->info("Completed scanning " + BOOKS_DIR + " for new books.");
     return true;
 }
 
@@ -85,15 +77,19 @@ bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
 
     bool movedFile = false;
-    char rootFilepath[1] = {'/'};
-    File root = device->openFile(rootFilepath);
+    std::string rootFilepath = "/";
+    File root = device->openFile(rootFilepath.c_str());
     File entry;
 
+    Logger::DEBUG("Looking for files in " + rootFilepath + " to copy to " + BOOKS_DIR);
     while (entry = root.openNextFile()) {
+        char filename[128];
+        entry.getName(filename, 128);
+        Logger::DEBUG("File in root " + std::string(filename));
         if (this->_fileIsTxt(entry)) {
             char bookFilename[128]; entry.getName(bookFilename, 128);
             std::string newBookPath = BOOKS_DIR + '/' + std::string(bookFilename);
-            Logger::l()->warn(std::string(bookFilename) + " found in the root of the SD card. Moving it to: " + newBookPath);
+            Logger::WARN(std::string(bookFilename) + " found in the root of the SD card. Moving it to: " + newBookPath);
 
             if(device->renameFile(bookFilename, newBookPath.c_str())) movedFile = true;
         } entry.close();
@@ -138,11 +134,11 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
         std::string tempBookDirectory = WORKING_DIR + std::string(this->Records[i].fileHash);
         std::string libraryBookDirectory = LIBRARY_DIR + std::string(this->Records[i].fileHash);
         if (device->fileExists(libraryBookDirectory.c_str())) {
-            Logger::l()->debug("Current BookRecord found, moving: " + libraryBookDirectory + " to " + tempBookDirectory);
+            Logger::DEBUG("Current BookRecord found, moving: " + libraryBookDirectory + " to " + tempBookDirectory);
             device->renameFile(libraryBookDirectory.c_str(), tempBookDirectory.c_str());
         } else {
             std::string tempBookFilename = tempBookDirectory + BOOK_FILE;
-            Logger::l()->info("Writing new BookRecord to: " + tempBookFilename);
+            Logger::INFO("Writing new BookRecord to: " + tempBookFilename);
             device->makeDirectory(tempBookDirectory.c_str());
             File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
             tempBook.write((byte *)&this->Records[i], sizeof(BookRecord));
@@ -187,7 +183,7 @@ BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
     char bookFilename[128]; entry.getName(bookFilename, 128);
     std::string bookPath = BOOKS_DIR + '/' + std::string(bookFilename);
 
-    Logger::l()->info("Processing new BookRecord: " + bookPath + '-' + std::string(fileHash));
+    Logger::DEBUG("Processing new BookRecord: " + bookPath + '-' + std::string(fileHash));
     strcpy(record.filename, bookPath.c_str());
     strcpy(record.fileHash, fileHash);
     record.fileSize = entry.size();
@@ -266,7 +262,7 @@ void OpenBookDatabase::_setFileHash(char* fileHash, File file) {
     char filename[64];    file.getName(filename, 64);
     std::string fileSha = sha256(fileBytes, 64).substr(0, 63);
 
-    Logger::l()->debug("File hash for " + std::string(filename) + " determined to be: " + fileSha);
+    Logger::DEBUG("File hash for " + std::string(filename) + " determined to be: " + fileSha);
     strcpy(fileHash, fileSha.c_str());
 }
 
@@ -303,7 +299,7 @@ std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
     uint16_t pageStart = LIBRARY_PAGE_SIZE * page;
     uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, this->Records.size());
 
-    for (int i = pageStart; i < pageEnd; i++) {
+    for (uint16_t i = pageStart; i < pageEnd; i++) {
         std::string title = this->getBookTitle(this->Records[i]);
         std::string author = this->getBookAuthor(this->Records[i]);
         if (author != "") title += " by " + author;

@@ -4,26 +4,41 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-static const std::string DEBUG = " [DEBUG] ";
-static const std::string INFO  = " [INFO]  ";
-static const std::string WARN  = " [WARN]  ";
-static const std::string ERROR = " [ERROR] ";
+static const std::string DEBUG_PREFIX = " [DEBUG] ";
+static const std::string INFO_PREFIX  = " [INFO]  ";
+static const std::string WARN_PREFIX  = " [WARN]  ";
+static const std::string ERROR_PREFIX = " [ERROR] ";
 
 class Logger {
 public:
-    static Logger *l() {
+    static Logger *logger() {
         static Logger instance;
         return &instance;
     }
-    void debug(std::string logLine);
-    void info(std::string logLine);
-    void warn(std::string logLine);
-    void error(std::string logLine);
+    static void DEBUG(std::string logLine) {
+        Logger::logger()->_debug(logLine);
+    }
+    static void INFO(std::string logLine) {
+        Logger::logger()->_info(logLine);
+    }
+    static void WARN(std::string logLine) {
+        Logger::logger()->_warn(logLine);
+    }
+    static void ERROR(std::string logLine) {
+        Logger::logger()->_error(logLine);
+    }
+
 protected:
+    void _debug(std::string logLine);
+    void _info(std::string logLine);
+    void _warn(std::string logLine);
+    void _error(std::string logLine);
+    void _printBanner();
     void _log(std::string logLine);
     std::string _getTimestamp();
+
     File logFile;
-    uint16_t logLevel = 2; // TODO: have this app conf configurable
+    bool debug = false; // TODO: have this app conf configurable
 private:
     Logger();
 };
