@@ -11,21 +11,24 @@ OpenBookDatabase::OpenBookDatabase() {}
  * @return A boolean if the OpenBookDatabase of if the database is present and valid
 */
 bool OpenBookDatabase::connect() {
-    Logger::l()->info("Connecting to the OpenBook database...");
     File database = this->_findOrCreateLibraryFile();
 
-    uint64_t magic;
     BookDatabaseHeader header;
-    database.read((byte *)&magic, sizeof(magic));
     database.read((byte *)&header, sizeof(BookDatabaseHeader));
     database.close();
 
-    if (magic != DATABASE_FILE_IDENTIFIER || header.version != DATABASE_VERSION) {
-        Logger::l()->error("Failed to connect to the OpenBook database.");
+    if (header.magic != DATABASE_FILE_IDENTIFIER) {
+        Logger::l()->error("OpenBookDatabase failed to connect- magic: " + std::to_string(header.magic) + " should equal " + std::to_string(DATABASE_FILE_IDENTIFIER));
+        return false;
+    } else if (header.version != DATABASE_VERSION) {
+        Logger::l()->error("OpenBookDatabase failed to connect- header.version: " + std::to_string(header.version) + " should equal " + std::to_string(DATABASE_VERSION));
         return false;
     }
 
-    Logger::l()->info("Successfully connected to the OpenBook database.");
+    Logger::l()->debug("OpenBookDatabase connected- version: " + std::to_string(header.version));
+    Logger::l()->debug("OpenBookDatabase connected- bookDirectoryHash: " + std::string(header.bookDirectoryHash));
+    strcpy(this->bookDirectoryHash, header.bookDirectoryHash);
+    Logger::l()->debug("OpenBookDatabase connected- this->bookDirectoryHash:  " + std::string(this->bookDirectoryHash));
     return true;
 }
 
@@ -46,20 +49,48 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
         } else device->makeDirectory(LIBRARY_DIR);
     }
 
-    std::string headerFilename = LIBRARY_DIR + HEADER_FILE;
-    if (!device->fileExists(headerFilename.c_str())) {
-        File header = device->openFile(headerFilename.c_str(), O_CREAT | O_RDWR);
-        BookDatabaseHeader blankHeader;
-        header.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-        header.write((byte *)&blankHeader, sizeof(BookDatabaseHeader));
-        header.flush();
-        header.close();
-    }
+    if (!device->fileExists(HEADER_FILE.c_str())) this->_updateHeaderFile();
 
     if (device->fileExists(WORKING_DIR)) device->removeDirectoryRecursive(WORKING_DIR);
     if (device->fileExists(BACKUP_DIR))  device->removeDirectoryRecursive(BACKUP_DIR);
 
-    return device->openFile(headerFilename.c_str());
+    return device->openFile(HEADER_FILE.c_str());
+}
+
+/**
+ * 
+*/
+void OpenBookDatabase::_updateHeaderFile(){
+    BookDatabaseHeader newHeader;
+    this->_setBookDirectoryHash(newHeader.bookDirectoryHash);
+
+    Logger::l()->debug("Creating library version file: " + HEADER_FILE);
+    Logger::l()->debug("Creating library version file- version: " + std::to_string(newHeader.version));
+    Logger::l()->debug("Creating library version file- bookDirectoryHash: " + std::string(newHeader.bookDirectoryHash));
+
+    File header = OpenBookDevice::sharedDevice()->openFile(HEADER_FILE.c_str(), O_RDWR | O_CREAT);
+    header.write((byte *)&newHeader, sizeof(BookDatabaseHeader));
+    header.flush(); header.close();
+}
+
+/**
+ * 
+*/
+void OpenBookDatabase::_setBookDirectoryHash(char* bookDirectoryHash) {
+    std::string booksDirectory = "";
+    File booksDirectoryFile = OpenBookDevice::sharedDevice()->openFile(BOOKS_DIR.c_str());
+    File child;
+    
+    while (child = booksDirectoryFile.openNextFile()) {
+        char childName[128]; child.getName(childName, 128);
+        booksDirectory = booksDirectory + std::string(childName) + std::to_string(child.fileSize());
+        child.close();
+    } booksDirectoryFile.close();
+
+    Logger::l()->debug("Books Directory String: " + booksDirectory);
+    SHA256 sha256; std::string booksSha = sha256(booksDirectory.c_str(), 64).substr(0, 63);;
+    Logger::l()->debug("Books Directory Hash: " + booksSha);
+    strcpy(bookDirectoryHash, booksSha.c_str());
 }
 
 /**
@@ -67,13 +98,29 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
  * @return TODO: is this needed?
 */
 bool OpenBookDatabase::scanForNewBooks() {
-    Logger::l()->info("Scanning " + BOOKS_DIR + " for new books.");
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    this->_copyTxtFilesToBookDirectory();
-    this->_processNewTxtFiles();
-    this->_writeNewBookRecordFiles();
-    Logger::l()->info("Completed scanning " + BOOKS_DIR + " for new books.");
+    if(this->_copyTxtFilesToBookDirectory() || this->_booksDirectoryChanged()) {
+        Logger::l()->info("Changes to " + BOOKS_DIR + " detected. Running update commands.");
+        this->_processNewAndLoadCurrentLibrary();
+        this->_writeNewBookRecordFiles();
+        this->_updateHeaderFile();
+    } else {
+        Logger::l()->info("No changes to " + BOOKS_DIR + " was detected.");
+        this->_loadCurrentLibrary();
+    }
+
+    Logger::l()->info("Completed scanning " + BOOKS_DIR + " for new books. Library count: " + std::to_string(this->getBookRecords().size()));
     return true;
+}
+
+/**
+ * 
+*/
+bool OpenBookDatabase::_booksDirectoryChanged() {
+    char bookDirectoryHash[64];
+    this->_setBookDirectoryHash(bookDirectoryHash);
+    Logger::l()->debug("Comparing Books directory hashes- current: " + std::string(this->bookDirectoryHash));
+    Logger::l()->debug("Comparing Books directory hashes- new:     " + std::string(bookDirectoryHash));
+    return std::string(bookDirectoryHash).compare(std::string(this->bookDirectoryHash));
 }
 
 
@@ -108,7 +155,7 @@ bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
  *  already exist in the LIBRARY dir, will read in that BookRecord into the active Database vector.
  *  If it doesn't yet exist, will process that new text file into an active BookRecord.
 */
-void OpenBookDatabase::_processNewTxtFiles() {
+void OpenBookDatabase::_processNewAndLoadCurrentLibrary() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     File booksDirectory = device->openFile(BOOKS_DIR.c_str());
     File entry;
@@ -123,6 +170,24 @@ void OpenBookDatabase::_processNewTxtFiles() {
             } else this->Records.push_back(this->_processBookFile(entry, fileHash));
         } entry.close();
     } booksDirectory.close();
+}
+
+/**
+ * 
+*/
+void OpenBookDatabase::_loadCurrentLibrary() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    File libraryDirectory = device->openFile(LIBRARY_DIR);
+    File entry;
+
+    while (entry = libraryDirectory.openNextFile()) {
+        if (entry.isDirectory()) {
+            char filename[64]; entry.getName(filename, 64);
+            Logger::l()->debug("Pushing current Library file: " + std::string(filename));
+            this->Records.push_back(this->getBookRecord(filename));
+            Logger::l()->debug("BookRecord:" + std::string(this->Records[this->Records.size()-1].filename));
+        }
+    }
 }
 
 /**

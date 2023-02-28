@@ -3,10 +3,11 @@
 
 Logger::Logger() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice(); // TODO: Maybe make this part of device since it's dependant on it
-    const char logFilename[14] = { '/', '.', 'o', 'p', 'e', 'n', 'b', 'o', 'o', 'k', '.', 'l', 'o', 'g' };
-    if (device->fileExists(logFilename)) {
-        logFile = device->openFile(logFilename, O_RDWR | O_APPEND);
-    } else logFile = device->openFile(logFilename, O_RDWR | O_CREAT);
+    //const char logFilename[14] = { '/', '.', 'o', 'p', 'e', 'n', 'b', 'o', 'o', 'k', '.', 'l', 'o', 'g' };
+    std::string logFilename = "/.openbook.log";
+    if (device->fileExists(logFilename.c_str())) {
+        logFile = device->openFile(logFilename.c_str(), O_RDWR | O_APPEND);
+    } else logFile = device->openFile(logFilename.c_str(), O_RDWR | O_CREAT);
 }
 
 void Logger::debug(std::string logLine) {

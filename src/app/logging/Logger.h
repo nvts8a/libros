@@ -23,7 +23,7 @@ protected:
     void _log(std::string logLine);
     std::string _getTimestamp();
     File logFile;
-    uint16_t logLevel = 2; // TODO: have this app conf configurable
+    uint16_t logLevel = 1; // TODO: have this app conf configurable
 private:
     Logger();
 };

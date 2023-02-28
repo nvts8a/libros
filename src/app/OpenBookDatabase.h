@@ -6,7 +6,7 @@
 #include <vector>
 #include "OpenBookDevice.h"
 
-static const std::string HEADER_FILE = "_HEADER";
+static const std::string HEADER_FILE = "/_LIBRARY/_HEADER";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
 static const std::string OBP_FILE = "/_OBP";
@@ -20,6 +20,7 @@ static const std::string BOOKS_DIR = "/BOOKS";
 static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
 static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
+static const uint64_t PAGINATION_FILE_IDENTIFIER = 4992030523817504768; 
 static const int TXT_EXTENSION = 1954051118;
 
 // Header
@@ -58,14 +59,15 @@ typedef struct {
 } BookRecord;
 
 typedef struct {
-    uint64_t flags = 0;
+    uint64_t magic = DATABASE_FILE_IDENTIFIER;
     uint32_t version = DATABASE_VERSION;
+    char bookDirectoryHash[64];
 } BookDatabaseHeader;
 
 // structs for the .pag pagination files
 
 typedef struct {
-    uint64_t magic = 4992030523817504768;   // for identifying the file
+    uint64_t magic = PAGINATION_FILE_IDENTIFIER;
     uint32_t numChapters = 0;               // Number of chapter descriptors
     uint32_t numPages = 0;                  // Number of page descriptors
     uint32_t tocStart = 0;                  // Start of chapter descriptors
@@ -120,8 +122,12 @@ public:
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
     File _findOrCreateLibraryFile();
+    void _updateHeaderFile();
+    void _setBookDirectoryHash(char* bookDirectoryHash);
+    bool _booksDirectoryChanged();
     bool _copyTxtFilesToBookDirectory();
-    void _processNewTxtFiles();
+    void _processNewAndLoadCurrentLibrary();
+    void _loadCurrentLibrary();
     void _writeNewBookRecordFiles();
     bool _fileIsTxt(File entry);
     void _setFileHash(char* fileHash, File entry);
@@ -131,6 +137,7 @@ protected:
     const char* _getPaginationFilename(BookRecord record);
     const char* _getCurrentPageFilename(BookRecord record);
 
+    char bookDirectoryHash[64] = {0};
     std::vector <BookRecord>Records;
 private:
     OpenBookDatabase();
