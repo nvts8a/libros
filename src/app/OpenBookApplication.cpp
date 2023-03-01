@@ -8,6 +8,9 @@
 #include "BabelSetupViewController.h"
 
 void OpenBookApplication::setup() {
+    std::shared_ptr<Task> displayTask = std::make_shared<OpenBookDisplay>();
+    this->addTask(displayTask);
+
     bool ready = true;
     if (OpenBookDevice::sharedDevice()->startSD()) {
         Logger::INFO("Started the SD Card service.");
@@ -35,7 +38,7 @@ void OpenBookApplication::setup() {
         if (!OpenBookDatabase::sharedDatabase()->connect()) {
             Logger::ERROR("Failed to start Database service.");
             this->requestedRefreshMode = OPEN_BOOK_DISPLAY_MODE_GRAYSCALE;
-            std::shared_ptr<FatalErrorViewController> modal = std::make_shared<FatalErrorViewController>(this->shared_from_this(), "Failed to process the OpenBook Database.");
+            std::shared_ptr<FatalErrorViewController> modal = std::make_shared<FatalErrorViewController>(this->shared_from_this(), "Failed to process the\nOpenBook Database.");
             this->setRootViewController(modal);
             ready = false;
         }
@@ -60,8 +63,6 @@ void OpenBookApplication::setup() {
         this->addTask(inputTask);
         std::shared_ptr<Task> powerTask = std::make_shared<OpenBookPowerMonitor>();
         this->addTask(powerTask);
-        std::shared_ptr<Task> displayTask = std::make_shared<OpenBookDisplay>();
-        this->addTask(displayTask);
 
         Logger::INFO("Setting up BookListView...");
         this->mainMenu = std::make_shared<BookListViewController>(this->shared_from_this());

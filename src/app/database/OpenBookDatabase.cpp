@@ -13,13 +13,17 @@ OpenBookDatabase::OpenBookDatabase() {}
 bool OpenBookDatabase::connect() {
     File database = this->_findOrCreateLibraryFile();
 
-    uint64_t magic;
-    BookDatabaseHeader header;
-    database.read((byte *)&magic, sizeof(magic));
-    database.read((byte *)&header, sizeof(BookDatabaseHeader));
+    BookDatabaseVersion version;
+    database.read((byte *)&version, sizeof(BookDatabaseVersion));
     database.close();
 
-    if (magic != DATABASE_FILE_IDENTIFIER || header.version != DATABASE_VERSION) return false;
+    if (version.magic != VERSION_FILE_ID) {
+        Logger::ERROR("OpenBookDatabase failed to initialize- magic: " + std::to_string(version.magic) + " should equal " + std::to_string(VERSION_FILE_ID));
+        return false;
+    } else if (version.version != DATABASE_VERSION) {
+        Logger::ERROR("OpenBookDatabase failed to initialize- header.version: " + std::to_string(version.version) + " should equal " + std::to_string(DATABASE_VERSION));
+        return false;
+    }
 
     return true;
 }
@@ -41,20 +45,26 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
         } else device->makeDirectory(LIBRARY_DIR);
     }
 
-    std::string headerFilename = LIBRARY_DIR + HEADER_FILE;
-    if (!device->fileExists(headerFilename.c_str())) {
-        File header = device->openFile(headerFilename.c_str(), O_CREAT | O_RDWR);
-        BookDatabaseHeader blankHeader;
-        header.write((byte *)&DATABASE_FILE_IDENTIFIER, sizeof(DATABASE_FILE_IDENTIFIER));
-        header.write((byte *)&blankHeader, sizeof(BookDatabaseHeader));
-        header.flush();
-        header.close();
+    std::string versionFilename = LIBRARY_DIR + VERSION_FILE;
+    if (!device->fileExists(versionFilename.c_str())) {
+        Logger::WARN("Library version file missing. Creating a new one at: " + versionFilename);
+        this->_createLibraryVersionFile(versionFilename);
     }
 
     if (device->fileExists(WORKING_DIR)) device->removeDirectoryRecursive(WORKING_DIR);
     if (device->fileExists(BACKUP_DIR))  device->removeDirectoryRecursive(BACKUP_DIR);
 
-    return device->openFile(headerFilename.c_str());
+    return device->openFile(versionFilename.c_str());
+}
+
+/**
+ * 
+*/
+void OpenBookDatabase::_createLibraryVersionFile(std::string versionFilename) {
+    File versionFile = OpenBookDevice::sharedDevice()->openFile(versionFilename.c_str(), O_CREAT | O_RDWR);
+    BookDatabaseVersion version;
+    versionFile.write((byte *)&version, sizeof(BookDatabaseVersion));
+    versionFile.flush(); versionFile.close();
 }
 
 /**
@@ -145,7 +155,9 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
             tempBook.flush(); tempBook.close();
         }
     }
-    
+    // Create new Library verion file for the updates
+    this->_createLibraryVersionFile(WORKING_DIR + VERSION_FILE);
+
     // Persist and clean up files
     device->renameFile(LIBRARY_DIR, BACKUP_DIR);
     device->renameFile(WORKING_DIR, LIBRARY_DIR);

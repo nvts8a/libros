@@ -6,7 +6,7 @@
 #include <vector>
 #include "OpenBookDevice.h"
 
-static const std::string HEADER_FILE = "_HEADER";
+static const std::string VERSION_FILE = "_VERSION";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
 static const std::string OBP_FILE = "/_OBP";
@@ -19,22 +19,23 @@ static const std::string BOOKS_DIR = "/BOOKS";
 
 static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
-static const uint64_t DATABASE_FILE_IDENTIFIER = 6825903261955698688;
-static const int TXT_EXTENSION = 1954051118;
+static const uint64_t VERSION_FILE_ID = 6825903261955698688;
+static const uint64_t PAGINATION_FILE_ID = 4992030523817504768;
+static const uint32_t TXT_EXTENSION = 1954051118;
 
 // Header
-static const int HEADER_TAG_COUNT  = 5;
-static const int HEADER_DELIMITER  = 170732845;
-static const int TAG_TITLE         = 1280592212;
-static const int TAG_AUTHOR        = 1213486401;
-static const int TAG_GENRE         = 1163021895;
-static const int TAG_DESCRIPTION   = 1129530692;
-static const int TAG_LANGUAGE      = 1196310860;
-static const int INDEX_TITLE       = 0;
-static const int INDEX_AUTHOR      = 1;
-static const int INDEX_GENRE       = 2;
-static const int INDEX_DESCRIPTION = 3;
-static const int INDEX_LANGUAGE    = 4;
+static const uint16_t HEADER_TAG_COUNT  = 5;
+static const uint32_t HEADER_DELIMITER  = 170732845;
+static const uint32_t TAG_TITLE         = 1280592212;
+static const uint32_t TAG_AUTHOR        = 1213486401;
+static const uint32_t TAG_GENRE         = 1163021895;
+static const uint32_t TAG_DESCRIPTION   = 1129530692;
+static const uint32_t TAG_LANGUAGE      = 1196310860;
+static const uint16_t INDEX_TITLE       = 0;
+static const uint16_t INDEX_AUTHOR      = 1;
+static const uint16_t INDEX_GENRE       = 2;
+static const uint16_t INDEX_DESCRIPTION = 3;
+static const uint16_t INDEX_LANGUAGE    = 4;
 
 // Special characters
 static const char  CHAPTER_MARK = 0x1e;
@@ -58,14 +59,14 @@ typedef struct {
 } BookRecord;
 
 typedef struct {
-    uint64_t flags = 0;
+    uint64_t magic = VERSION_FILE_ID;
     uint32_t version = DATABASE_VERSION;
-} BookDatabaseHeader;
+} BookDatabaseVersion;
 
 // structs for the .pag pagination files
 
 typedef struct {
-    uint64_t magic = 4992030523817504768;   // for identifying the file
+    uint64_t magic = PAGINATION_FILE_ID;    // for identifying the file
     uint32_t numChapters = 0;               // Number of chapter descriptors
     uint32_t numPages = 0;                  // Number of page descriptors
     uint32_t tocStart = 0;                  // Start of chapter descriptors
@@ -120,6 +121,7 @@ public:
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
     File _findOrCreateLibraryFile();
+    void _createLibraryVersionFile(std::string versionFilename);
     bool _copyTxtFilesToBookDirectory();
     void _processNewTxtFiles();
     void _writeNewBookRecordFiles();
