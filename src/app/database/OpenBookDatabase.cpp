@@ -25,6 +25,10 @@ bool OpenBookDatabase::connect() {
         return false;
     }
 
+    this->libraryHash = std::string(version.libraryHash);
+    Logger::DEBUG("OpenBookDatabase initialized with-        magic: " + std::to_string(version.magic));
+    Logger::DEBUG("OpenBookDatabase initialized with-      version: " + std::to_string(version.version));
+    Logger::DEBUG("OpenBookDatabase initialized with- library hash: " + this->libraryHash);
     return true;
 }
 
@@ -58,13 +62,36 @@ File OpenBookDatabase::_findOrCreateLibraryFile() {
 }
 
 /**
- * 
+ * Constructs a new BookDatabaseVersion and writes it to the location provided.
+ * @param versionFilename The string location the version file is being written to.
 */
 void OpenBookDatabase::_createLibraryVersionFile(std::string versionFilename) {
     File versionFile = OpenBookDevice::sharedDevice()->openFile(versionFilename.c_str(), O_CREAT | O_RDWR);
     BookDatabaseVersion version;
+    this->_setLibraryHash(version.libraryHash);
     versionFile.write((byte *)&version, sizeof(BookDatabaseVersion));
     versionFile.flush(); versionFile.close();
+}
+
+/**
+ * Creates a hash of the contents of the Books directory.
+ * @param libraryHash The pointer to the destination to store the hash.
+*/
+void OpenBookDatabase::_setLibraryHash(char* libraryHash) {
+    std::string booksDirectory = "";
+    File booksDirectoryFile = OpenBookDevice::sharedDevice()->openFile(BOOKS_DIR.c_str());
+    File child;
+
+    while (child = booksDirectoryFile.openNextFile()) {
+        char childName[128]; child.getName(childName, 128);
+        booksDirectory = booksDirectory + std::string(childName) + std::to_string(child.fileSize());
+        child.close();
+    } booksDirectoryFile.close();
+
+    SHA256 sha256; std::string booksSha = sha256(booksDirectory.c_str(), booksDirectory.length()).substr(0, 63);;
+    strcpy(libraryHash, booksSha.c_str());
+    Logger::DEBUG("Books Directory unique string: " + booksDirectory);
+    Logger::DEBUG("Library Hash generated: " + std::string(libraryHash));
 }
 
 /**
@@ -72,9 +99,15 @@ void OpenBookDatabase::_createLibraryVersionFile(std::string versionFilename) {
  * @return TODO: is this needed?
 */
 bool OpenBookDatabase::scanForNewBooks() {
-    this->_copyTxtFilesToBookDirectory();
-    this->_processNewTxtFiles();
-    this->_writeNewBookRecordFiles();
+    char newLibraryHash[64]; this->_setLibraryHash(newLibraryHash);
+    bool libraryChanged = this->libraryHash.compare(std::string(newLibraryHash));
+    bool movedFiles     = this->_copyTxtFilesToBookDirectory();
+
+    if (movedFiles || libraryChanged) {
+        this->_processNewTxtFiles();
+        this->_writeNewBookRecordFiles();
+    } else this->_getLibrary();
+
     return true;
 }
 
@@ -129,6 +162,25 @@ void OpenBookDatabase::_processNewTxtFiles() {
             } else this->Records.push_back(this->_processBookFile(entry, fileHash));
         } entry.close();
     } booksDirectory.close();
+}
+
+/**
+ * Using the LIBRARY dir, looks for BookRecord directories in there. Using the BookRecord
+ *  directory name, constructs the BookRecord and pushes it to the running database vector
+ *  of BookRecords
+*/
+void OpenBookDatabase::_getLibrary() {
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    File libraryDirectory = device->openFile(LIBRARY_DIR);
+    File bookRecord;
+
+    while (bookRecord = libraryDirectory.openNextFile()) {
+        if (bookRecord.isDirectory()) {
+            char bookRecordHash[64]; bookRecord.getName(bookRecordHash, 64);
+            this->Records.push_back(this->getBookRecord(bookRecordHash));
+        }
+        bookRecord.close();
+    } libraryDirectory.close();
 }
 
 /**

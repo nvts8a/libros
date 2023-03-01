@@ -61,6 +61,7 @@ typedef struct {
 typedef struct {
     uint64_t magic = VERSION_FILE_ID;
     uint32_t version = DATABASE_VERSION;
+    char libraryHash[64] = {0};
 } BookDatabaseVersion;
 
 // structs for the .pag pagination files
@@ -122,8 +123,10 @@ public:
 protected:
     File _findOrCreateLibraryFile();
     void _createLibraryVersionFile(std::string versionFilename);
+    void _setLibraryHash(char* libraryHash);
     bool _copyTxtFilesToBookDirectory();
     void _processNewTxtFiles();
+    void _getLibrary();
     void _writeNewBookRecordFiles();
     bool _fileIsTxt(File entry);
     void _setFileHash(char* fileHash, File entry);
@@ -133,6 +136,7 @@ protected:
     const char* _getPaginationFilename(BookRecord record);
     const char* _getCurrentPageFilename(BookRecord record);
 
+    std::string libraryHash;
     std::vector <BookRecord>Records;
 private:
     OpenBookDatabase();
