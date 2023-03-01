@@ -3,6 +3,7 @@
 
 #include <string>
 #include "OpenBookDevice.h"
+#include "Config.h"
 
 static const std::string DEBUG_PREFIX = " [DEBUG] ";
 static const std::string INFO_PREFIX  = " [INFO]  ";
@@ -38,7 +39,6 @@ protected:
     std::string _getTimestamp();
 
     File logFile;
-    bool debug = false; // TODO: have this app conf configurable
 private:
     Logger();
 };

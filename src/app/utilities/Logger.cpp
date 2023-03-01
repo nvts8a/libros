@@ -1,16 +1,22 @@
 #include "Logger.h"
+#include "Config.h"
 #include <chrono>
 
 Logger::Logger() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    if (!device->fileExists("/.logs")) device->makeDirectory("/.logs");
+    if (!device->fileExists("/_OPENBOOK")) device->makeDirectory("/_OPENBOOK");
+    std::string logFilename = "/_OPENBOOK/openbook.log";
 
-    std::string logFilename = "/.logs/.openbook.log";
     if (device->fileExists(logFilename.c_str())) {
-        logFile = device->openFile(logFilename.c_str(), O_RDWR | O_APPEND);
-    } else logFile = device->openFile(logFilename.c_str(), O_RDWR | O_CREAT);
+        if (Config::TRUNCATE_LOG_FILES_ENABLED()) {
+            device->removeFile(logFilename.c_str());
+            this->logFile = device->openFile(logFilename.c_str(), O_RDWR | O_CREAT);
+        } else this->logFile = device->openFile(logFilename.c_str(), O_RDWR | O_APPEND);
+    } else this->logFile = device->openFile(logFilename.c_str(), O_RDWR | O_CREAT);
 
-    if (logFile.isOpen()) this->_printBanner();
+    this->_info("CONFIG TEST: " + Config::DEBUG_LOG_LEVEL_ENABLED());
+    this->_info("CONFIG TEST: " + Config::TRUNCATE_LOG_FILES_ENABLED());
+    if (this->logFile.isOpen()) this->_printBanner();
 }
 
 /**
@@ -18,7 +24,7 @@ Logger::Logger() {
  * @param logLine The string contents of the DEBUG message
 */
 void Logger::_debug(std::string logLine) {
-    if (this->debug) this->_log(_getTimestamp() + DEBUG_PREFIX + logLine);
+    if (Config::DEBUG_LOG_LEVEL_ENABLED()) this->_log(_getTimestamp() + DEBUG_PREFIX + logLine);
 }
 
 /**
@@ -73,7 +79,7 @@ std::string Logger::_getTimestamp() {
 */
 void Logger::_printBanner() {
     this->_log("");
-    if(this->debug) {
+    if(Config::DEBUG_LOG_LEVEL_ENABLED) {
         this->_log("@@@       @@@  @@@@@@@   @@@@@@@    @@@@@@    @@@@@@");
         this->_log("@@@       @@@  @@@@@@@@  @@@@@@@@  @@@@@@@@  @@@@@@@ ");
         this->_log("@@!       @@!  @@!  @@@  @@!  @@@  @@!  @@@  !@@  ");
@@ -82,11 +88,11 @@ void Logger::_printBanner() {
         this->_log("!!!       !!!  !!!@!!!!  !!@!@!    !@!  !!!   !!@!!! ");
         this->_log("!!:       !!:  !!:  !!!  !!: :!!   !!:  !!!       !:! ");
         this->_log("!:!       :!:  :!:  !:!  :!:  !:!  :!:  !:!      !:! ");
-        this->_log(" :: ::::   ::   :: ::::  ::   :::  ::::: ::  :::: ::    v0.5.3");
+        this->_log(" :: ::::   ::   :: ::::  ::   :::  ::::: ::  :::: ::    " + Config::SOFTWARE_VERSION());
         this->_log(": :: : :  : :  :: : ::   : :  : :   : :  :   :: : :     DEBUG MODE");
     } else {
         this->_log(" /./_ __   _");
-        this->_log("///_///_/_\\  v0.5.3");
+        this->_log("///_///_/_\\  " + Config::SOFTWARE_VERSION());
     }
     this->_log("");
 }
