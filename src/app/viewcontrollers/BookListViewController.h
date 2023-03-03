@@ -14,6 +14,7 @@ public:
     virtual void viewWillAppear() override;
 
     void selectBook(Event event);
+    void viewBookDetails(Event event);
     void dismiss(Event event);
     void paginate(Event event);
     void updateBatteryIcon(Event event = {0});

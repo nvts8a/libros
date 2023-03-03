@@ -39,9 +39,11 @@ void BookListViewController::createView() {
     this->view->addSubview(this->pagination);
 
     this->view->setAction(std::bind(&BookListViewController::selectBook, this, std::placeholders::_1), BUTTON_TAP);
-    this->view->setAction(std::bind(&BookListViewController::updateBatteryIcon, this, std::placeholders::_1), OPEN_BOOK_EVENT_POWER_CHANGED);
+    this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_LEFT);
+    this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_RIGHT);
     this->view->setAction(std::bind(&BookListViewController::previousPage, this, std::placeholders::_1), BUTTON_PREV);
     this->view->setAction(std::bind(&BookListViewController::nextPage, this, std::placeholders::_1), BUTTON_NEXT);
+    this->view->setAction(std::bind(&BookListViewController::updateBatteryIcon, this, std::placeholders::_1), OPEN_BOOK_EVENT_POWER_CHANGED);
 }
 
 void BookListViewController::selectBook(Event event) {
@@ -66,6 +68,62 @@ void BookListViewController::selectBook(Event event) {
             this->modal->becomeFocused();
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
         }
+    }
+}
+
+/**
+ * TODO: This seems like an awful way to do this but I don't know any better so that means I'm not at fault right?
+*/
+void BookListViewController::viewBookDetails(Event event) {
+    if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
+        uint16_t    bookIndex =       (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        BookRecord  selectedBook =    OpenBookDatabase::sharedDatabase()->getBookRecords()[bookIndex];
+        std::string bookTitle =       OpenBookDatabase::sharedDatabase()->getBookTitle(selectedBook);
+        std::string bookAuthor =      OpenBookDatabase::sharedDatabase()->getBookAuthor(selectedBook);
+        std::string bookDescription = OpenBookDatabase::sharedDatabase()->getBookDescription(selectedBook);
+
+        this->modal = std::make_shared<BorderedView>(MakeRect(20, 20, 300-20-20, 400-20-20));
+        int16_t subviewWidth = this->modal->getFrame().size.width - 40;
+        window->addSubview(this->modal);
+
+        std::shared_ptr<OpenBookLabel> label = std::make_shared<OpenBookLabel>(MakeRect(20, 20, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
+        this->modal->addSubview(label);
+
+        uint16_t lineLength = 37;
+        bookDescription = "   " + bookDescription;
+        std::string currentWord = "";
+        std::string currentLine = "";
+        std::vector<std::string> lines;
+
+        for(uint16_t i = 0; i < bookDescription.length(); i++) {
+            if (bookDescription[i] == ' ') {
+                if (currentLine.length() + 1 + currentWord.length() > lineLength) {
+                    lines.push_back(currentLine);
+                    currentLine = currentWord;
+                    currentWord = "";
+                } else {
+                    currentLine = currentLine + ' ' + currentWord;
+                    currentWord = "";
+                }
+            } else {
+                currentWord = currentWord + bookDescription[i];
+            }
+        }
+
+        for (uint16_t i = 0; i < lines.size(); i++) {
+            std::shared_ptr<Label> descriptionLine = std::make_shared<Label>(MakeRect(20, 70 + (i * 10), 40, 200), lines[i]);
+            this->modal->addSubview(descriptionLine);
+        }
+
+        std::string closeLabel = "Close";
+        int16_t closeXPosition = (this->modal->getFrame().size.width - (closeLabel.length() * 6) - 24) / 2;
+        int16_t closeYPosition = this->modal->getFrame().size.height - 32;
+        std::shared_ptr<OpenBookButton> close = std::make_shared<OpenBookButton>(MakeRect(closeXPosition, closeYPosition, 56, 24), closeLabel);
+        close->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
+        this->modal->addSubview(close);
+
+        this->modal->becomeFocused();
+        this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
     }
 }
 

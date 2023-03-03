@@ -15,7 +15,7 @@ public:
     }
 
     static std::string SOFTWARE_VERSION() {
-        return "v0.5.5";
+        return "v0.6.0";
     }
 
     static bool DEBUG_LOG_LEVEL_ENABLED() {
