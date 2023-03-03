@@ -6,7 +6,8 @@
 
 BookListViewController::BookListViewController(std::shared_ptr<Application> application) : ViewController(application) {
     this->numberOfBooks = OpenBookDatabase::sharedDatabase()->getBookRecords().size();
-    this->numberOfPages = this->numberOfBooks / LIBRARY_PAGE_SIZE;
+    this->numberOfPages = (this->numberOfBooks - 1) / LIBRARY_PAGE_SIZE;
+
     this->_updatePagination();
 }
 
