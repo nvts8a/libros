@@ -5,10 +5,10 @@
 #include "OpenBookDevice.h"
 #include "Config.h"
 
-static const std::string DEBUG_PREFIX = " [DEBUG] ";
-static const std::string INFO_PREFIX  = " [INFO]  ";
-static const std::string WARN_PREFIX  = " [WARN]  ";
-static const std::string ERROR_PREFIX = " [ERROR] ";
+static const std::string DEBUG_PREFIX = "[DEBUG] ";
+static const std::string INFO_PREFIX  = "[INFO]  ";
+static const std::string WARN_PREFIX  = "[WARN]  ";
+static const std::string ERROR_PREFIX = "[ERROR] ";
 
 class Logger {
 public:
@@ -18,6 +18,9 @@ public:
     }
     static void DEBUG(std::string logLine) {
         Logger::logger()->_debug(logLine);
+    }
+    static void LOAD_TEST() {
+        Logger::logger()->_loadTest();
     }
     static void INFO(std::string logLine) {
         Logger::logger()->_info(logLine);
@@ -34,11 +37,12 @@ protected:
     void _info(std::string logLine);
     void _warn(std::string logLine);
     void _error(std::string logLine);
-    void _printBanner();
+    void _loadTest();
     void _log(std::string logLine);
-    std::string _getTimestamp();
+    void _printBanner();
 
     File logFile;
+    uint32_t loadStart = 0;
 private:
     Logger();
 };

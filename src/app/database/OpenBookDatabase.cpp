@@ -118,13 +118,14 @@ bool OpenBookDatabase::scanForNewBooks() {
 */
 bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    std::string rootFilepath = "/";
+
+    Logger::INFO("Looking for files in " + rootFilepath + " to copy to " + BOOKS_DIR + "..."); Logger::LOAD_TEST();
 
     bool movedFile = false;
-    std::string rootFilepath = "/";
     File root = device->openFile(rootFilepath.c_str());
     File entry;
 
-    Logger::DEBUG("Looking for files in " + rootFilepath + " to copy to " + BOOKS_DIR);
     while (entry = root.openNextFile()) {
         char filename[128];
         entry.getName(filename, 128);
@@ -138,6 +139,7 @@ bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
         } entry.close();
     } root.close();
 
+    Logger::INFO("Completed looking for and moving files that belong in " + BOOKS_DIR); Logger::LOAD_TEST();
     return movedFile;
 }
 
@@ -148,6 +150,8 @@ bool OpenBookDatabase::_copyTxtFilesToBookDirectory() {
  *  If it doesn't yet exist, will process that new text file into an active BookRecord.
 */
 void OpenBookDatabase::_processNewTxtFiles() {
+    Logger::INFO("Processing new text files..."); Logger::LOAD_TEST();
+
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     File booksDirectory = device->openFile(BOOKS_DIR.c_str());
     File entry;
@@ -162,25 +166,8 @@ void OpenBookDatabase::_processNewTxtFiles() {
             } else this->Records.push_back(this->_processBookFile(entry, fileHash));
         } entry.close();
     } booksDirectory.close();
-}
 
-/**
- * Using the LIBRARY dir, looks for BookRecord directories in there. Using the BookRecord
- *  directory name, constructs the BookRecord and pushes it to the running database vector
- *  of BookRecords
-*/
-void OpenBookDatabase::_getLibrary() {
-    OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    File libraryDirectory = device->openFile(LIBRARY_DIR);
-    File bookRecord;
-
-    while (bookRecord = libraryDirectory.openNextFile()) {
-        if (bookRecord.isDirectory()) {
-            char bookRecordHash[64]; bookRecord.getName(bookRecordHash, 64);
-            this->Records.push_back(this->getBookRecord(bookRecordHash));
-        }
-        bookRecord.close();
-    } libraryDirectory.close();
+    Logger::INFO("Completed processing new text files."); Logger::LOAD_TEST();
 }
 
 /**
@@ -189,6 +176,8 @@ void OpenBookDatabase::_getLibrary() {
  *  such that any old BookRecords will be cleaned up. TODO: Find a more performant way to do this.
 */
 void OpenBookDatabase::_writeNewBookRecordFiles() {
+    Logger::INFO("Writing new BookRecords to disk..."); Logger::LOAD_TEST();
+
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     device->makeDirectory(WORKING_DIR);
 
@@ -214,6 +203,31 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
     device->renameFile(LIBRARY_DIR, BACKUP_DIR);
     device->renameFile(WORKING_DIR, LIBRARY_DIR);
     device->removeDirectoryRecursive(BACKUP_DIR);
+
+    Logger::INFO("Completed writing new BookRecord files to disk."); Logger::LOAD_TEST();
+}
+
+/**
+ * Using the LIBRARY dir, looks for BookRecord directories in there. Using the BookRecord
+ *  directory name, constructs the BookRecord and pushes it to the running database vector
+ *  of BookRecords
+*/
+void OpenBookDatabase::_getLibrary() {
+    Logger::DEBUG("No changes to the Library Database detected, loading from disk..."); Logger::LOAD_TEST();
+
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
+    File libraryDirectory = device->openFile(LIBRARY_DIR);
+    File bookRecord;
+
+    while (bookRecord = libraryDirectory.openNextFile()) {
+        if (bookRecord.isDirectory()) {
+            char bookRecordHash[64]; bookRecord.getName(bookRecordHash, 64);
+            this->Records.push_back(this->getBookRecord(bookRecordHash));
+        }
+        bookRecord.close();
+    } libraryDirectory.close();
+
+    Logger::DEBUG("Completed loading the Library Database from disk."); Logger::LOAD_TEST();
 }
 
 /**
@@ -241,13 +255,14 @@ bool OpenBookDatabase::_fileIsTxt(File entry) {
  * @return A successfully processed BookRecord
 */
 BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
+
     BookRecord record = {0};
 
     // Copy file data to BookRecord
     char bookFilename[128]; entry.getName(bookFilename, 128);
     std::string bookPath = BOOKS_DIR + '/' + std::string(bookFilename);
 
-    Logger::DEBUG("Processing new BookRecord: " + bookPath + '-' + std::string(fileHash));
+    Logger::INFO("Processing new BookRecord " + bookPath + ": " + std::string(fileHash)); Logger::LOAD_TEST();
     strcpy(record.filename, bookPath.c_str());
     strcpy(record.fileHash, fileHash);
     record.fileSize = entry.size();
@@ -310,6 +325,7 @@ BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
         record.metadata[INDEX_TITLE] = field;
     }
 
+    Logger::INFO("Completed processing new BookRecord " + bookPath + ": " + std::string(fileHash)); Logger::LOAD_TEST();
     return record;
 }
 
