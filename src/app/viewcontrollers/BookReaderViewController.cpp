@@ -117,8 +117,8 @@ void BookReaderViewController::handleModal(Event event) {
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_PARTIAL);
             break;
         case BUTTON_RIGHT:
-            this->currentPage = min(this->currentPage + 10, this->numPages);
-            percentComplete = (float)(this->currentPage) / (float)(this->numPages);
+            this->currentPage = min(this->currentPage + 10, this->numPages - 1);
+            percentComplete = (float)(this->currentPage) / (float)(this->numPages - 1);
             ss << "Go to page " << this->currentPage + 1;
             this->modalSlider->setProgress(percentComplete);
             this->gotoPageLabel->setText(ss.str());
