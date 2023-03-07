@@ -10,6 +10,8 @@
 void OpenBookApplication::setup() {
     std::shared_ptr<Task> displayTask = std::make_shared<OpenBookDisplay>();
     this->addTask(displayTask);
+    std::shared_ptr<Task> inputTask = std::make_shared<OpenBookRawButtonInput>();
+    this->addTask(inputTask);
 
     bool ready = true;
     if (OpenBookDevice::sharedDevice()->startSD()) {
@@ -59,8 +61,6 @@ void OpenBookApplication::setup() {
         Logger::INFO("Setting up tasks for input, output, and lock screen...");
         std::shared_ptr<Task> lockScreenTask = std::make_shared<OpenBookLockScreen>();
         this->addTask(lockScreenTask);
-        std::shared_ptr<Task> inputTask = std::make_shared<OpenBookRawButtonInput>();
-        this->addTask(inputTask);
         std::shared_ptr<Task> powerTask = std::make_shared<OpenBookPowerMonitor>();
         this->addTask(powerTask);
 
