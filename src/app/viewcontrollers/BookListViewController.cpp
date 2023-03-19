@@ -13,7 +13,7 @@ BookListViewController::BookListViewController(std::shared_ptr<Application> appl
 
 void BookListViewController::viewWillAppear() {
     ViewController::viewWillAppear();
-    this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
+    if (this->numberOfBooks > 0) this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
     this->updateBatteryIcon();
 }
 
@@ -39,11 +39,13 @@ void BookListViewController::createView() {
     this->pagination = std::make_shared<Label>(MakeRect(this->paginationLabelXPos, 400-40, 90, 8), this->paginationLabel);
     this->view->addSubview(this->pagination);
 
-    this->view->setAction(std::bind(&BookListViewController::selectBook, this, std::placeholders::_1), BUTTON_TAP);
-    this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_LEFT);
-    this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_RIGHT);
-    this->view->setAction(std::bind(&BookListViewController::previousPage, this, std::placeholders::_1), BUTTON_PREV);
-    this->view->setAction(std::bind(&BookListViewController::nextPage, this, std::placeholders::_1), BUTTON_NEXT);
+    if (this->numberOfBooks > 0) { // If there aren't any books, these actions will just err out
+        this->view->setAction(std::bind(&BookListViewController::selectBook, this, std::placeholders::_1), BUTTON_TAP);
+        this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_LEFT);
+        this->view->setAction(std::bind(&BookListViewController::viewBookDetails, this, std::placeholders::_1), BUTTON_RIGHT);
+        this->view->setAction(std::bind(&BookListViewController::previousPage, this, std::placeholders::_1), BUTTON_PREV);
+        this->view->setAction(std::bind(&BookListViewController::nextPage, this, std::placeholders::_1), BUTTON_NEXT);
+    }
     this->view->setAction(std::bind(&BookListViewController::updateBatteryIcon, this, std::placeholders::_1), OPEN_BOOK_EVENT_POWER_CHANGED);
 }
 
@@ -194,14 +196,15 @@ void BookListViewController::_updateView() {
 }
 
 /**
- * Updates the pagination label for view creation or when you switch pages
+ * If there are books, updates the pagination label for view creation or when you switch pages
 */
 void BookListViewController::_updatePagination() {
-    uint16_t pageStart = (LIBRARY_PAGE_SIZE * this->currentPage) + 1;
-    uint16_t pageEnd = min((pageStart + LIBRARY_PAGE_SIZE - 1), this->numberOfBooks);
-    std::string prefix = "   "; if (pageStart > 1)                 prefix = "<< ";
-    std::string suffix = "   "; if (pageEnd < this->numberOfBooks) suffix = " >>";
-    
-    this->paginationLabel = prefix + std::to_string(pageStart) + '-' + std::to_string(pageEnd) + " of " + std::to_string(numberOfBooks) + suffix;
-    this->paginationLabelXPos = 150 - ((this->paginationLabel.length() / 2) * 6);
+    if (this->numberOfBooks > 0) {
+        uint16_t pageStart = (LIBRARY_PAGE_SIZE * this->currentPage) + 1;
+        uint16_t pageEnd = min((pageStart + LIBRARY_PAGE_SIZE - 1), this->numberOfBooks);
+        std::string prefix = "   "; if (pageStart > 1)                 prefix = "<< ";
+        std::string suffix = "   "; if (pageEnd < this->numberOfBooks) suffix = " >>";
+        this->paginationLabel = prefix + std::to_string(pageStart) + '-' + std::to_string(pageEnd) + " of " + std::to_string(numberOfBooks) + suffix;
+        this->paginationLabelXPos = 150 - ((this->paginationLabel.length() / 2) * 6);
+    }
 }

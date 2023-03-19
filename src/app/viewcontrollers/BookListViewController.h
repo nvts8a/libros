@@ -26,8 +26,8 @@ protected:
     uint16_t numberOfPages = 0;
     uint16_t currentPage = 0;
     BookRecord currentBook = {0};
-    std::string paginationLabel = "";
-    int16_t paginationLabelXPos = 145;
+    std::string paginationLabel = "No books found";
+    int16_t paginationLabelXPos = 108;
 
     std::shared_ptr<OpenBookTable> table;
     std::shared_ptr<BorderedView> modal;
