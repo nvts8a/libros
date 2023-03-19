@@ -472,6 +472,7 @@ bool OpenBookDatabase::bookIsPaginated(BookRecord record) {
  * @param record The BookRecord to be paginated
 */
 void OpenBookDatabase::paginateBook(BookRecord record) {
+    Logger::INFO("Starting pagination of " + std::string(record.filename) + "..."); Logger::LOAD_TEST();
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     File paginationFile;
     const char *paginationFilename = this->_getPaginationFilename(record);
@@ -624,6 +625,7 @@ BREAK_PAGE:
     paginationFile.write((byte *)&header, sizeof(BookPaginationHeader));
     paginationFile.flush();
     paginationFile.close();
+    Logger::INFO("Pagination of " + std::string(record.filename) + " completed."); Logger::LOAD_TEST();
 }
 
 uint32_t OpenBookDatabase::numPages(BookRecord record) {
