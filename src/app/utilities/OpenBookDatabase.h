@@ -134,7 +134,7 @@ protected:
     void _getChaptersFilename(BookRecord record, char* chaptersFilename);
     void _getCurrentPageFilename(BookRecord record, char* currentPageFilename);
 
-    std::string libraryHash;
+    BookDatabaseVersion version;
     std::vector <BookRecord>Records;
 private:
     OpenBookDatabase();
