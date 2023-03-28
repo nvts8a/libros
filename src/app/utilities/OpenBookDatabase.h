@@ -7,20 +7,20 @@
 #include "OpenBookDevice.h"
 
 static const std::string VERSION_FILE = "_VERSION";
+static const std::string CHAPTERS_FILE = "/_CHAPTERS";
 static const std::string PAGES_FILE = "/_PAGES";
 static const std::string BOOK_FILE = "/_BOOK";
-static const std::string OBP_FILE = "/_OBP";
+static const std::string CURRENT_PAGE_FILE = "/_CURRENT";
 static const std::string BOOKS_DIR = "/BOOKS";
 #define LIBRARY_DIR    ("/_LIBRARY/")
 #define BACKUP_DIR     ("/_LIBBACK/")
 #define WORKING_DIR    ("/_LIBTEMP/")
 
-#define DATABASE_VERSION  (0x0003)
+#define DATABASE_VERSION  (0x0004)
 
 static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
 static const uint64_t VERSION_FILE_ID = 6825903261955698688;
-static const uint64_t PAGINATION_FILE_ID = 4992030523817504768;
 static const uint32_t TXT_EXTENSION = 1954051118;
 
 // Header
@@ -38,8 +38,13 @@ static const uint16_t INDEX_DESCRIPTION = 3;
 static const uint16_t INDEX_LANGUAGE    = 4;
 
 // Special characters
-static const char  CHAPTER_MARK = 0x1e;
-static const char  SPACE        = 0x20;
+static const char CHAPTER_MARK = 0x1e;
+static const char NEW_LINE     = 0x0a;
+static const char SPACE        = 0x20;
+
+// Page consts
+static const uint16_t PAGE_HEIGHT = 384;
+static const uint16_t PAGE_WIDTH  = 288;
 
 // Structs for the _LIBRARY database
 
@@ -54,7 +59,8 @@ typedef struct {
     char fileHash[64];
     uint64_t fileSize = 0;
     uint64_t textStart = 0;
-    uint64_t flags = 0;
+    uint32_t numChapters = 0; // Number of chapter descriptors
+    uint32_t numPages = 0;    // Number of page descriptors
     BookField metadata[HEADER_TAG_COUNT];
 } BookRecord;
 
@@ -64,16 +70,6 @@ typedef struct {
     char libraryHash[64] = {0};
 } BookDatabaseVersion;
 
-// structs for the .pag pagination files
-
-typedef struct {
-    uint64_t magic = PAGINATION_FILE_ID;    // for identifying the file
-    uint32_t numChapters = 0;               // Number of chapter descriptors
-    uint32_t numPages = 0;                  // Number of page descriptors
-    uint32_t tocStart = 0;                  // Start of chapter descriptors
-    uint32_t pageStart = 0;                 // Start of page descriptors
-} BookPaginationHeader;
-
 typedef struct {
     uint32_t loc = 0;       // Location in the text file of the RS indicating chapter separation
     uint16_t len = 0;       // Length of the chapter header, including RS character
@@ -81,12 +77,12 @@ typedef struct {
 } BookChapter;
 
 typedef struct {
-    uint32_t loc = 0;                       // Location in the text file of the page
-    uint16_t len = 0;                       // Length of the page in characters
+    uint32_t startLocation = 0;  // Location in the text file of the page
+    uint16_t pageByteLength = 0; // Length of the page in characters
     struct {
-        uint16_t isChapterSeparator : 1;    // 1 if this is a chapter separator page
-        uint16_t activeShifts : 2;          // 0-3 for number of format shifts
-        uint16_t reserved : 13;             // Reserved for future use
+        uint16_t isChapterSeparator : 1; // 1 if this is a chapter separator page
+        uint16_t activeShifts : 2;       // 0-3 for number of format shifts
+        uint16_t reserved : 13;          // Reserved for future use
     } flags = {0};
 } BookPage;
 
@@ -116,8 +112,9 @@ public:
 
     // Methods for dealing with .pag sidecar files
     bool bookIsPaginated(BookRecord record);
-    void paginateBook(BookRecord record);
-    uint32_t numPages(BookRecord record);
+    BookRecord paginateBook(BookRecord record);
+    std::vector<BookChapter> _generateChapters(BookRecord bookRecord);
+    std::vector<BookPage> _generatePages(BookRecord bookRecord);
 
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
@@ -133,8 +130,9 @@ protected:
     bool _hasHeader(File entry);
     BookRecord _processBookFile(File entry, char* fileHash);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
-    const char* _getPaginationFilename(BookRecord record);
-    const char* _getCurrentPageFilename(BookRecord record);
+    void _getPaginationFilename(BookRecord record, char* paginationFilename);
+    void _getChaptersFilename(BookRecord record, char* chaptersFilename);
+    void _getCurrentPageFilename(BookRecord record, char* currentPageFilename);
 
     std::string libraryHash;
     std::vector <BookRecord>Records;

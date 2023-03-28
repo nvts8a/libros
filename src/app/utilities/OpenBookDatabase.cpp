@@ -26,7 +26,6 @@ bool OpenBookDatabase::connect() {
     }
 
     this->libraryHash = std::string(version.libraryHash);
-    Logger::DEBUG("OpenBookDatabase initialized with-        magic: " + std::to_string(version.magic));
     Logger::DEBUG("OpenBookDatabase initialized with-      version: " + std::to_string(version.version));
     Logger::DEBUG("OpenBookDatabase initialized with- library hash: " + this->libraryHash);
     return true;
@@ -189,11 +188,12 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
             device->renameFile(libraryBookDirectory.c_str(), tempBookDirectory.c_str());
         } else {
             std::string tempBookFilename = tempBookDirectory + BOOK_FILE;
-            Logger::INFO("Writing new BookRecord to: " + tempBookFilename);
+            Logger::DEBUG("Writing new BookRecord to: " + tempBookFilename);
             device->makeDirectory(tempBookDirectory.c_str());
             File tempBook = device->openFile(tempBookFilename.c_str(), O_RDWR | O_CREAT);
             tempBook.write((byte *)&this->Records[i], sizeof(BookRecord));
             tempBook.flush(); tempBook.close();
+            Logger::DEBUG("Completed writing new BookRecord to: " + tempBookFilename);
         }
     }
     // Create new Library verion file for the updates
@@ -317,7 +317,7 @@ BookRecord OpenBookDatabase::_processBookFile(File entry, char* fileHash) {
         BookField field;
         field.tag = TAG_TITLE;
         field.loc = 0;
-        field.len = min(record.fileSize, 32); // up to 32 characters
+        field.len = min(record.fileSize, (uint64_t)32); // up to 32 characters
         for(int i = 0; i < field.len; i++) { // but truncate it at the first newline
             char c = entry.read();
             if (c == '\r' || c == '\n') field.len = i;
@@ -377,7 +377,7 @@ std::vector<BookRecord, std::allocator<BookRecord>> OpenBookDatabase::getBookRec
 std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
     std::vector<std::string> titles;
     uint16_t pageStart = LIBRARY_PAGE_SIZE * page;
-    uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, this->Records.size());
+    uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, (uint16_t)this->Records.size());
 
     for (uint16_t i = pageStart; i < pageEnd; i++) {
         std::string title = this->getBookTitle(this->Records[i]);
@@ -391,7 +391,10 @@ std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
 }
 
 /**
- * 
+ * Using the fileHash of a book file, gets a stored BookRecord object for that book file.
+ * TODO: should handle missing BookRecords more gracefully, I think it'll currently just read garbage
+ * @param fileHash the char array of the hash of a book file, to be used in the directory of the BookRecord
+ * @return the BookRecord object for that book's file hash
 */
 BookRecord OpenBookDatabase::getBookRecord(char* fileHash) {
     BookRecord bookRecord;
@@ -422,10 +425,10 @@ std::string OpenBookDatabase::getBookDescription(BookRecord record) {
 */
 uint32_t OpenBookDatabase::getCurrentPage(BookRecord record) {
     uint32_t retval = 0;
-    const char *pageFilename = this->_getCurrentPageFilename(record);
+    char currentPageFilename[128]; this->_getCurrentPageFilename(record, currentPageFilename);
 
-    if (OpenBookDevice::sharedDevice()->fileExists(pageFilename)) {
-        File pageFile = OpenBookDevice::sharedDevice()->openFile(pageFilename);
+    if (OpenBookDevice::sharedDevice()->fileExists(currentPageFilename)) {
+        File pageFile = OpenBookDevice::sharedDevice()->openFile(currentPageFilename);
         pageFile.read((void *)&retval, 4);
         pageFile.close();
     }
@@ -439,9 +442,9 @@ uint32_t OpenBookDatabase::getCurrentPage(BookRecord record) {
  * @param pageNumber The integer page number to set the current page to
 */
 void OpenBookDatabase::setCurrentPage(BookRecord record, uint32_t pageNumber) {
-    const char *pageFilename = this->_getCurrentPageFilename(record);
+    char currentPageFilename[128]; this->_getCurrentPageFilename(record, currentPageFilename);
 
-    File pageFile = OpenBookDevice::sharedDevice()->openFile(pageFilename, O_CREAT | O_WRITE | O_TRUNC);
+    File pageFile = OpenBookDevice::sharedDevice()->openFile(currentPageFilename, O_CREAT | O_WRITE | O_TRUNC);
     pageFile.write(&pageNumber, 4);
     pageFile.close();
 }
@@ -461,214 +464,206 @@ std::string OpenBookDatabase::_getMetadataAtIndex(BookRecord record, uint16_t i)
     return retval;
 }
 
-bool OpenBookDatabase::bookIsPaginated(BookRecord record) {
-    return OpenBookDevice::sharedDevice()->fileExists(this->_getPaginationFilename(record));
+bool OpenBookDatabase::bookIsPaginated(BookRecord bookRecord) {
+    char paginationFilename[128]; this->_getPaginationFilename(bookRecord, paginationFilename);
+    return OpenBookDevice::sharedDevice()->fileExists(paginationFilename);
 }
 
 /**
- * Paginates a provided BookRecord by ... 
- *  and outputing a pagination file in the same directory the BookRecord is found in.
- *  The paginations file is a .pag binary file containing a header of metadata,
- * @param record The BookRecord to be paginated
+ * Paginates a provided BookRecord by parsing its filename for chapters and formatted pages,
+ *      then writes those chapters and pages to disk to be used when reading the book, and writes
+ *      an updated BookRecord to disk with new metadata.
+ * @param record The BookRecord to be paginated and updated
+ * @return a BookRecord object that was saved to disk with updated numChapters and numPages values
 */
-void OpenBookDatabase::paginateBook(BookRecord record) {
-    Logger::INFO("Starting pagination of " + std::string(record.filename) + "..."); Logger::LOAD_TEST();
+BookRecord OpenBookDatabase::paginateBook(BookRecord bookRecord) {
+    Logger::INFO("Starting pagination of " + std::string(bookRecord.filename) + "..."); Logger::LOAD_TEST();
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
-    File paginationFile;
-    const char *paginationFilename = this->_getPaginationFilename(record);
 
-    if (device->fileExists(paginationFilename)) { // If the pagination file for the BookRecord exists
-        paginationFile = device->openFile(paginationFilename, O_RDWR | O_TRUNC); // ...open it with read/write and truncate
-    } else {
-        paginationFile = device->openFile(paginationFilename, O_RDWR | O_CREAT); // ...or else, create and open it read/write
-    }
+    // Get the Chapters
+    std::vector<BookChapter> chapters = this->_generateChapters(bookRecord);
+    // Write the Chapters
+    char chaptersFilename[128]; this->_getChaptersFilename(bookRecord, chaptersFilename);
+    File chaptersFile = device->openFile(chaptersFilename, O_CREAT | O_RDWR);
+    for (auto chapter : chapters) chaptersFile.write((byte *)&chapter, sizeof(BookChapter));
+    chaptersFile.flush(); chaptersFile.close();
 
-    // Write an empty placeholder header
-    BookPaginationHeader header = {0};
-    paginationFile.write((byte *)&header, sizeof(BookPaginationHeader));
-    paginationFile.seekSet(0);  // TODO: Is this needed?
-    paginationFile.flush();
-    paginationFile.close();
+    // Get the Pages
+    std::vector<BookPage> pages = this->_generatePages(bookRecord);
+    // Write the Pages
+    char paginationFilename[128]; this->_getPaginationFilename(bookRecord, paginationFilename);
+    Logger::DEBUG("paginationFilename: " + std::string(paginationFilename));
+    File paginationFile = device->openFile(paginationFilename, O_CREAT | O_RDWR);
+    for (auto page : pages) paginationFile.write((byte *)&page, sizeof(BookPage));
+    paginationFile.flush(); paginationFile.close();
 
-    // now process the whole file and seek out chapter headings.
-    BookChapter chapter = {0};
-    File bookFile = device->openFile(record.filename);
-    bookFile.seekSet(record.textStart);
+    // Update the BookRecord
+    bookRecord.numChapters = chapters.size();
+    bookRecord.numPages = pages.size();
+    std::string bookRecordFilename = LIBRARY_DIR + std::string(bookRecord.fileHash) + BOOK_FILE;
+    File bookRecordFile = device->openFile(bookRecordFilename.c_str(), O_TRUNC | O_RDWR);
+    bookRecordFile.write((byte *)&bookRecord, sizeof(BookRecord));
+    bookRecordFile.flush(); bookRecordFile.close();
+
+    Logger::INFO("Pagination of " + std::string(bookRecord.filename) + " completed."); Logger::LOAD_TEST();
+    return bookRecord;
+}
+
+/**
+ * Parses over a book text file, looking for chapter characters, obtaining the chapter data to be used
+ *      for the table of contents.
+ * TODO: Table of contents doesn't seem to be working
+ * TODO: This should be used in _generatePages to avoid reprocessing of chapters and improved perf
+ * @param bookRecord the BookRecord object with the book filename to be parsed
+ * @return a vector of BookChapter objects to be written to disk
+*/
+std::vector<BookChapter> OpenBookDatabase::_generateChapters(BookRecord bookRecord) {
+    std::vector<BookChapter> chapters = {};
+
+    File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecord.filename);
+    bookFile.seekSet(bookRecord.textStart);
     do {
-        if (bookFile.read() == CHAPTER_MARK) {
+        if (bookFile.read() == CHAPTER_MARK) { // TODO: see if find() or findUntil() is more performant
+            BookChapter chapter = {0};
             chapter.loc = bookFile.position() - 1;
             chapter.len++;
-            header.numChapters++;
             char c;
             do {
                 c = bookFile.read();
                 chapter.len++;
             } while(c != '\n');
-            bookFile.close();
-            paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
-            paginationFile.write((byte *)&chapter, sizeof(BookChapter));
-            paginationFile.flush();
-            paginationFile.close();
-            bookFile = device->openFile(record.filename);
+            chapters.push_back(chapter);
             bookFile.seekSet(chapter.loc + chapter.len);
-            chapter = {0};
         }
     } while (bookFile.available());
     bookFile.close();
 
-    if (header.numChapters) {
-        // if we found chapters, mark the table of contents as starting right after the header...
-        header.tocStart = sizeof(BookPaginationHeader);
-        // ...and the page index as starting right after that.
-        header.pageStart = header.tocStart + header.numChapters * sizeof(BookChapter);
-    } else {
-        // Otherwise we have no table of contents.
-        header.tocStart = 0;
-        // Mark page index as starting right after the header.
-        header.pageStart = sizeof(BookPaginationHeader);
-    }
+    return chapters;
+}
 
-    // OKAY! Time to do pages. For this we have to traverse the whole file again,
-    // but this time we need to simulate actually laying it out.
+/**
+ * Parses over a book text file, using the page view size and babel to determine the most
+ *      amount of bytes, formated appropriatly, that can fit on a page before a new page
+ *      is needed, storing that length, and restarting, until all formated page lengths
+ *      are found and returned.
+ * @param bookRecord the BookRecord object with the book filename to be parsed
+ * @return a vector of BookPage objects to be written to disk
+*/
+std::vector<BookPage> OpenBookDatabase::_generatePages(BookRecord bookRecord) {
+    std::vector<BookPage> pages = {};
+    OpenBookDevice *device = OpenBookDevice::sharedDevice();
     BabelDevice *babel = device->getTypesetter()->getBabel();
-    BookPage page = {0};
-    uint16_t yPos = 0;
-    char utf8bytes[128];
-    BABEL_CODEPOINT codepoints[127];
 
-    bookFile = device->openFile(record.filename);
-    bookFile.seekSet(record.textStart);
-    const int16_t pageWidth = 288;
-    const int16_t pageHeight = 384;
-    uint32_t nextPosition = 0;
-    bool firstLoop = true;
+    File bookFile = device->openFile(bookRecord.filename);
+    bookFile.seekSet(bookRecord.textStart);
 
-    page.loc = bookFile.position();
-    page.len = 0;
+    uint16_t yPos = 0;      // Used to calculate when a page grows past the page height
+    BookPage page = {0};    // Object for storing page details
+    page.startLocation = bookFile.position();
+
     do {
-        uint32_t startPosition = bookFile.position();
-        int bytesRead = bookFile.read(utf8bytes, 127);
-        utf8bytes[127] = 0;
-        bool wrapped = false;
-        babel->utf8_parse(utf8bytes, codepoints);
+        // Read in bytes from the book file and convert them with babel
+        char rawBookFileBytes[128] = {0};
+        int byteCountRead = bookFile.read(rawBookFileBytes, 127);
+        BABEL_CODEPOINT babelGlyphBytes[127];
+        babel->utf8_parse(rawBookFileBytes, babelGlyphBytes);
 
-        if (codepoints[0] == CHAPTER_MARK) {
-            if (!firstLoop) {
-                // close out the last chapter
-                nextPosition = bookFile.position();
-                bookFile.close();
-                paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
-                paginationFile.write((byte *)&page, sizeof(BookPage));
-                paginationFile.flush();
-                paginationFile.close();
-                bookFile = device->openFile(record.filename);
-                header.numPages++;
-                page.loc = page.loc + page.len;
-                page.len = 0;
-                bookFile.seekSet(nextPosition);
+        // If the first character of the babel bytes is a chapter marker, process the chapter details
+        if (babelGlyphBytes[0] == CHAPTER_MARK) {
+            // If the previous page has data, close it out and push it onto the page vector
+            if (page.pageByteLength > 0) {
+                bookFile.seekSet(page.startLocation + page.pageByteLength);
+                pages.push_back(page);
+                page.startLocation = bookFile.position();
+                page.pageByteLength = 0;
             }
 
-            int32_t line_end = 0;
-            // FIXME: handle case where no newline in 127 code points
-            while(codepoints[line_end++] != '\n');
-            nextPosition = startPosition + line_end;
-            page.len = line_end;
-            goto BREAK_PAGE;
-        } else {
-            size_t bytePosition;
-            babel->word_wrap_position(codepoints, bytesRead, &wrapped, &bytePosition, pageWidth, 1);
-            for(int i = bytePosition; i < 127; i++) {
-                if (utf8bytes[i] == SPACE) bytePosition++;
-                else break;
+            // Find the end of the chapter title data
+            bool chapterEndFound = false;
+            while (!chapterEndFound && page.pageByteLength < 127) {
+                if (babelGlyphBytes[page.pageByteLength++] == NEW_LINE) chapterEndFound = true;
             }
-            if (bytePosition > 0) {
-                page.len += bytePosition;
-                nextPosition = startPosition + bytePosition;
-            } else {
-                page.len += bytesRead;
-                nextPosition = startPosition + bytesRead;
-            }
-        }
 
-        if (wrapped) {
-            yPos += 16 + 2;
-        } else {
-            yPos += 16 + 2 + 8;
-        }
-        
-        if (yPos + 16 > pageHeight) {
-BREAK_PAGE:
-            bookFile.close();
-            paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
-            paginationFile.write((byte *)&page, sizeof(BookPage));
-            paginationFile.flush();
-            paginationFile.close();
-            bookFile = device->openFile(record.filename);
-            header.numPages++;
+            // Push the chapter and the length of the title data as a page to page vector
+            bookFile.seekSet(page.startLocation + page.pageByteLength);
+            pages.push_back(page);
+            page.startLocation = bookFile.position();
+            page.pageByteLength = 0;
             yPos = 0;
-            page.loc = page.loc + page.len;
-            page.len = 0;
+        // ...otherwise process it onto a page
+        } else {
+            // First, we find the last appropriate break point in the processed line of data for the width of the eReader page
+            bool lineWrapped = false;
+            size_t bytePosition;
+            int16_t breakPosition = babel->word_wrap_position(babelGlyphBytes, byteCountRead, &lineWrapped, &bytePosition, PAGE_WIDTH, 1);
+
+            // The bytePosition is prefered but can be empty for long words, cut the last line short, or present for EOF characters...
+            if (bytePosition > 0) {
+                page.pageByteLength += bytePosition;
+                bookFile.seekSet(page.startLocation + page.pageByteLength);
+            // ...so breakPosition will be the entire line for long unbroken words...
+            } else if (breakPosition > 0) {
+                page.pageByteLength += breakPosition;
+                bookFile.seekSet(page.startLocation + page.pageByteLength);
+            // ...or it will be 0 or -1 if the file is empty or only contains control characters
+            //      and we can close the file, causing available() to return false when it otherwise wouldn't
+            } else bookFile.close();
+
+            // If the line wraps, as in a paragraph continuing, we provide less white space than
+            //      if it doesn't and a new paragraph is starting
+            yPos += 16 + 2 + (lineWrapped ? 0 : 8);
+            // If another line would put the page beyond the height of the page, close it out,
+            //      store it, and reset the page data for a fresh one
+            if (yPos + 16 + 2 > PAGE_HEIGHT) {
+                pages.push_back(page);
+                page.startLocation = bookFile.position();
+                page.pageByteLength = 0;
+                yPos = 0;
+            }
         }
-        bookFile.seekSet(nextPosition);
-        firstLoop = false;
     } while (bookFile.available());
 
-    bookFile.close();
-    paginationFile = device->openFile(paginationFilename, O_RDWR | O_AT_END);
-    paginationFile.write((byte *)&page, sizeof(BookPage));
-    paginationFile.flush();
-    paginationFile.close();
-    header.numPages++;
+    // If there's page data left over because it wasn't closed out before the end of the file was reached
+    //      store that last page before we wrap up
+    if (page.startLocation != bookFile.position()) {
+        page.pageByteLength = bookFile.position() - page.startLocation;
+        pages.push_back(page);
+    }
+    bookFile.close();  // Make sure our file is closed
 
-    paginationFile = device->openFile(paginationFilename, O_RDWR);
-    paginationFile.seekSet(0);
-    paginationFile.write((byte *)&header, sizeof(BookPaginationHeader));
-    paginationFile.flush();
-    paginationFile.close();
-    Logger::INFO("Pagination of " + std::string(record.filename) + " completed."); Logger::LOAD_TEST();
+    return pages;
 }
 
-uint32_t OpenBookDatabase::numPages(BookRecord record) {
-    const char *paginationFilename = this->_getPaginationFilename(record);
+/**
+ * Gets the text for a book's page! Perscribed by our pagination and babel.
+ * @param bookRecord the BookRecord object used to get the book file and text and pagination file and page data
+ * @param page the interger page number for the BookPage object we want data for
+ * @return a string of text from the book's text file, starting and as long as persribed by the pagination file for the page number
+*/
+std::string OpenBookDatabase::getTextForPage(BookRecord bookRecord, uint32_t page) {
+    std::string retval = "";
+    char paginationFilename[128]; this->_getPaginationFilename(bookRecord, paginationFilename);
 
-    if (OpenBookDevice::sharedDevice()->fileExists(paginationFilename)) {
-        BookPaginationHeader header;
-        File f = OpenBookDevice::sharedDevice()->openFile(paginationFilename);
-        f.read(&header, sizeof(BookPaginationHeader));
-        return header.numPages;
+    if (page < bookRecord.numPages && OpenBookDevice::sharedDevice()->fileExists(paginationFilename)) {
+        BookPage bookPage;
+        File paginationFile = OpenBookDevice::sharedDevice()->openFile(paginationFilename);
+
+        paginationFile.seekSet(page * sizeof(BookPage));
+        paginationFile.read(&bookPage, sizeof(BookPage));
+        paginationFile.close();
+
+        File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecord.filename);
+        bookFile.seekSet(bookPage.startLocation);
+
+        char *buf = (char *)malloc(bookPage.pageByteLength + 1);
+        bookFile.read(buf, bookPage.pageByteLength);
+        buf[bookPage.pageByteLength] = 0; // TODO: What's this do?
+        bookFile.close();
+
+        retval = std::string(buf); free(buf);
     }
 
-    return 0;
-}
-
-std::string OpenBookDatabase::getTextForPage(BookRecord record, uint32_t page) {
-    const char *paginationFilename = this->_getPaginationFilename(record);
-
-    if (OpenBookDevice::sharedDevice()->fileExists(paginationFilename)) {
-        BookPaginationHeader header;
-        BookPage pageInfo;
-
-        File f = OpenBookDevice::sharedDevice()->openFile(paginationFilename);
-        f.read(&header, sizeof(BookPaginationHeader));
-        if (page >= header.numPages) return "";
-
-        f.seekSet(header.pageStart + page * sizeof(BookPage));
-        f.read(&pageInfo, sizeof(BookPage));
-        f.close();
-
-        f = OpenBookDevice::sharedDevice()->openFile(record.filename);
-        f.seekSet(pageInfo.loc);
-        char *buf = (char *)malloc(pageInfo.len + 1);
-        f.read(buf, pageInfo.len);
-        f.close();
-        buf[pageInfo.len] = 0;
-        std::string retval = std::string(buf);
-        free(buf);
-
-        return retval;
-    }
-
-    return "";
+    return retval;
 }
 
 /**
@@ -676,8 +671,17 @@ std::string OpenBookDatabase::getTextForPage(BookRecord record, uint32_t page) {
  * @param  record The BookRecord object you're attempting to get the pagination file for
  * @return A char array of BookRecords pagination file location
  */
-const char* OpenBookDatabase::_getPaginationFilename(BookRecord record) {
-    return (LIBRARY_DIR + std::string(record.fileHash) + PAGES_FILE).c_str();
+void OpenBookDatabase::_getPaginationFilename(BookRecord record, char* paginationFilename) {
+    strcpy(paginationFilename, (LIBRARY_DIR + std::string(record.fileHash) + PAGES_FILE).c_str());
+}
+
+/**
+ * This method takes in a BookRecord and using it's file hash, constructs a string of its chapters file location
+ * @param  record The BookRecord object you're attempting to get the chapters file for
+ * @return A char array of BookRecords chapters file location
+ */
+void OpenBookDatabase::_getChaptersFilename(BookRecord record, char* chaptersFilename) {
+    strcpy(chaptersFilename, (LIBRARY_DIR + std::string(record.fileHash) + CHAPTERS_FILE).c_str());
 }
 
 /**
@@ -685,6 +689,6 @@ const char* OpenBookDatabase::_getPaginationFilename(BookRecord record) {
  * @param  record The BookRecord object you're attempting to get the current file for
  * @return A char array of BookRecords current page file location
  */
-const char* OpenBookDatabase::_getCurrentPageFilename(BookRecord record) {
-    return (LIBRARY_DIR + std::string(record.fileHash) + OBP_FILE).c_str();
+void OpenBookDatabase::_getCurrentPageFilename(BookRecord record, char* currentPageFilename) {
+    strcpy(currentPageFilename, (LIBRARY_DIR + std::string(record.fileHash) + CURRENT_PAGE_FILE).c_str());
 }

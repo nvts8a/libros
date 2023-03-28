@@ -142,7 +142,7 @@ void BookListViewController::paginate(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
         window->removeSubview(this->modal);
         this->modal.reset();
-        OpenBookDatabase::sharedDatabase()->paginateBook(this->currentBook);
+        this->currentBook = OpenBookDatabase::sharedDatabase()->paginateBook(this->currentBook);
         this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&this->currentBook);
     }
 }

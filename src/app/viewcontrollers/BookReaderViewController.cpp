@@ -4,7 +4,7 @@
 
 BookReaderViewController::BookReaderViewController(std::shared_ptr<Application> application, BookRecord book) : ViewController(application) {
     this->book = book;
-    this->numPages = max(OpenBookDatabase::sharedDatabase()->numPages(this->book), 1);
+    this->numPages = max(this->book.numPages, (uint32_t)1);
     this->currentPage = OpenBookDatabase::sharedDatabase()->getCurrentPage(this->book);
     this->_getProgressLabelDetails();
 }
