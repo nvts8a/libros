@@ -71,8 +71,8 @@ typedef struct {
 } BookDatabaseVersion;
 
 typedef struct {
-    uint32_t loc = 0;       // Location in the text file of the RS indicating chapter separation
-    uint16_t len = 0;       // Length of the chapter header, including RS character
+    uint32_t startLocation = 0;       // Location in the text file of the RS indicating chapter separation
+    uint16_t chapterByteLength = 0;   // Length of the chapter header, including RS character
     uint16_t reserved = 0;  // Reserved for future use
 } BookChapter;
 
@@ -113,7 +113,6 @@ public:
     // Methods for dealing with .pag sidecar files
     bool bookIsPaginated(BookRecord record);
     BookRecord paginateBook(BookRecord record);
-    std::vector<BookChapter> _generateChapters(BookRecord bookRecord);
     std::tuple<std::vector<BookPage>, std::vector<BookChapter>> _generatePages(BookRecord bookRecord);
 
     std::string getTextForPage(BookRecord record, uint32_t page);

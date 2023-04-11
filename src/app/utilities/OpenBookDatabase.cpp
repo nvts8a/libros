@@ -547,14 +547,13 @@ std::tuple<std::vector<BookPage>, std::vector<BookChapter>> OpenBookDatabase::_g
             // Find the end of the chapter title data
             bool chapterEndFound = false;
             while (!chapterEndFound && page.pageByteLength < 127) {
-                // TODO: see if find() or findUntil() is more performant
                 if (babelGlyphBytes[page.pageByteLength++] == NEW_LINE) chapterEndFound = true;
             }
 
             // Push the chapter and the lenth of the title data as a chapter to the chapter vector
             BookChapter chapter = {0};
-            chapter.loc = page.startLocation;
-            chapter.len = page.pageByteLength;
+            chapter.startLocation = page.startLocation;
+            chapter.chapterByteLength = page.pageByteLength;
             chapters.push_back(chapter);
 
             // Push the chapter and the length of the title data as a page to page vector
