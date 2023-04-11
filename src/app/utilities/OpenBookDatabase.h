@@ -114,7 +114,7 @@ public:
     bool bookIsPaginated(BookRecord record);
     BookRecord paginateBook(BookRecord record);
     std::vector<BookChapter> _generateChapters(BookRecord bookRecord);
-    std::vector<BookPage> _generatePages(BookRecord bookRecord);
+    std::tuple<std::vector<BookPage>, std::vector<BookChapter>> _generatePages(BookRecord bookRecord);
 
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:

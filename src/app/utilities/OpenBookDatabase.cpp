@@ -476,16 +476,11 @@ BookRecord OpenBookDatabase::paginateBook(BookRecord bookRecord) {
     Logger::INFO("Starting pagination of " + std::string(bookRecord.filename) + "..."); Logger::LOAD_TEST();
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
 
-    // Get the Chapters
-    std::vector<BookChapter> chapters = this->_generateChapters(bookRecord);
-    // Write the Chapters
-    char chaptersFilename[128]; this->_getChaptersFilename(bookRecord, chaptersFilename);
-    File chaptersFile = device->openFile(chaptersFilename, O_CREAT | O_RDWR);
-    for (auto chapter : chapters) chaptersFile.write((byte *)&chapter, sizeof(BookChapter));
-    chaptersFile.flush(); chaptersFile.close();
-
     // Get the Pages
-    std::vector<BookPage> pages = this->_generatePages(bookRecord);
+    std::vector<BookPage> pages;
+    std::vector<BookChapter> chapters;
+    std::tie(pages, chapters) = this->_generatePages(bookRecord);
+
     // Write the Pages
     char paginationFilename[128]; this->_getPaginationFilename(bookRecord, paginationFilename);
     Logger::DEBUG("paginationFilename: " + std::string(paginationFilename));
@@ -493,6 +488,12 @@ BookRecord OpenBookDatabase::paginateBook(BookRecord bookRecord) {
     for (auto page : pages) paginationFile.write((byte *)&page, sizeof(BookPage));
     paginationFile.flush(); paginationFile.close();
 
+    // Write the Chapters
+    char chaptersFilename[128]; this->_getChaptersFilename(bookRecord, chaptersFilename);
+    File chaptersFile = device->openFile(chaptersFilename, O_CREAT | O_RDWR);
+    for (auto chapter : chapters) chaptersFile.write((byte *)&chapter, sizeof(BookChapter));
+    chaptersFile.flush(); chaptersFile.close();
+    
     // Update the BookRecord
     bookRecord.numChapters = chapters.size();
     bookRecord.numPages = pages.size();
@@ -506,38 +507,6 @@ BookRecord OpenBookDatabase::paginateBook(BookRecord bookRecord) {
 }
 
 /**
- * Parses over a book text file, looking for chapter characters, obtaining the chapter data to be used
- *      for the table of contents.
- * TODO: Table of contents doesn't seem to be working
- * TODO: This should be used in _generatePages to avoid reprocessing of chapters and improved perf
- * @param bookRecord the BookRecord object with the book filename to be parsed
- * @return a vector of BookChapter objects to be written to disk
-*/
-std::vector<BookChapter> OpenBookDatabase::_generateChapters(BookRecord bookRecord) {
-    std::vector<BookChapter> chapters = {};
-
-    File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecord.filename);
-    bookFile.seekSet(bookRecord.textStart);
-    do {
-        if (bookFile.read() == CHAPTER_MARK) { // TODO: see if find() or findUntil() is more performant
-            BookChapter chapter = {0};
-            chapter.loc = bookFile.position() - 1;
-            chapter.len++;
-            char c;
-            do {
-                c = bookFile.read();
-                chapter.len++;
-            } while(c != '\n');
-            chapters.push_back(chapter);
-            bookFile.seekSet(chapter.loc + chapter.len);
-        }
-    } while (bookFile.available());
-    bookFile.close();
-
-    return chapters;
-}
-
-/**
  * Parses over a book text file, using the page view size and babel to determine the most
  *      amount of bytes, formated appropriatly, that can fit on a page before a new page
  *      is needed, storing that length, and restarting, until all formated page lengths
@@ -545,8 +514,9 @@ std::vector<BookChapter> OpenBookDatabase::_generateChapters(BookRecord bookReco
  * @param bookRecord the BookRecord object with the book filename to be parsed
  * @return a vector of BookPage objects to be written to disk
 */
-std::vector<BookPage> OpenBookDatabase::_generatePages(BookRecord bookRecord) {
+std::tuple<std::vector<BookPage>, std::vector<BookChapter>> OpenBookDatabase::_generatePages(BookRecord bookRecord) {
     std::vector<BookPage> pages = {};
+    std::vector<BookChapter> chapters = {};
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     BabelDevice *babel = device->getTypesetter()->getBabel();
 
@@ -577,8 +547,15 @@ std::vector<BookPage> OpenBookDatabase::_generatePages(BookRecord bookRecord) {
             // Find the end of the chapter title data
             bool chapterEndFound = false;
             while (!chapterEndFound && page.pageByteLength < 127) {
+                // TODO: see if find() or findUntil() is more performant
                 if (babelGlyphBytes[page.pageByteLength++] == NEW_LINE) chapterEndFound = true;
             }
+
+            // Push the chapter and the lenth of the title data as a chapter to the chapter vector
+            BookChapter chapter = {0};
+            chapter.loc = page.startLocation;
+            chapter.len = page.pageByteLength;
+            chapters.push_back(chapter);
 
             // Push the chapter and the length of the title data as a page to page vector
             bookFile.seekSet(page.startLocation + page.pageByteLength);
@@ -627,7 +604,7 @@ std::vector<BookPage> OpenBookDatabase::_generatePages(BookRecord bookRecord) {
     }
     bookFile.close();  // Make sure our file is closed
 
-    return pages;
+    return std::make_tuple(pages, chapters);
 }
 
 /**
