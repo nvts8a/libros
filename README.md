@@ -1,5 +1,5 @@
 # libros - The OpenBook Firmware 
-[![release badge](https://badgen.net/badge/libros/v0.7.2/blue)](https://github.com/nvts8a/libros/raw/main/releases/libros-LATEST.uf2)
+[![release badge](https://badgen.net/badge/libros/v0.7.3/blue)](https://github.com/nvts8a/libros/raw/main/releases/libros-LATEST.uf2)
 
 ## Releases
 

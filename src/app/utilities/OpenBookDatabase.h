@@ -16,7 +16,7 @@ static const std::string BOOKS_DIR = "/BOOKS";
 #define BACKUP_DIR     ("/_LIBBACK/")
 #define WORKING_DIR    ("/_LIBTEMP/")
 
-#define DATABASE_VERSION  (0x0004)
+#define DATABASE_VERSION  (0x0005)
 
 static const uint16_t LIBRARY_PAGE_SIZE = 12;
 
@@ -70,22 +70,6 @@ typedef struct {
     char libraryHash[64] = {0};
 } BookDatabaseVersion;
 
-typedef struct {
-    uint32_t startLocation = 0;       // Location in the text file of the RS indicating chapter separation
-    uint16_t chapterByteLength = 0;   // Length of the chapter header, including RS character
-    uint16_t reserved = 0;  // Reserved for future use
-} BookChapter;
-
-typedef struct {
-    uint32_t startLocation = 0;  // Location in the text file of the page
-    uint16_t pageByteLength = 0; // Length of the page in characters
-    struct {
-        uint16_t isChapterSeparator : 1; // 1 if this is a chapter separator page
-        uint16_t activeShifts : 2;       // 0-3 for number of format shifts
-        uint16_t reserved : 13;          // Reserved for future use
-    } flags = {0};
-} BookPage;
-
 class OpenBookDatabase {
 public:
     static OpenBookDatabase *sharedDatabase() {
@@ -113,7 +97,7 @@ public:
     // Methods for dealing with .pag sidecar files
     bool bookIsPaginated(BookRecord record);
     BookRecord paginateBook(BookRecord record);
-    std::tuple<std::vector<BookPage>, std::vector<BookChapter>> _generatePages(BookRecord bookRecord);
+    std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> _generatePages(BookRecord bookRecord);
 
     std::string getTextForPage(BookRecord record, uint32_t page);
 protected:
