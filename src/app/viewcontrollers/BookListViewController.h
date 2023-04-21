@@ -25,7 +25,7 @@ protected:
     uint16_t numberOfBooks = 0;
     uint16_t numberOfPages = 0;
     uint16_t currentPage = 0;
-    BookRecord currentBook = {0};
+    uint16_t currentBook = 0;
     std::string paginationLabel = "No books found";
     int16_t paginationLabelXPos = 108;
 
@@ -37,6 +37,7 @@ protected:
     std::shared_ptr<Label> pagination;
 
     void _updateView();
+    void _updateLibraryPage();
     void _updatePagination();
 };
 

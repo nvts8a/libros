@@ -97,7 +97,7 @@ bool OpenBookDatabase::scanForNewBooks() {
     if (movedFiles || libraryChanged) {
         this->_processNewTxtFiles();
         this->_writeNewBookRecordFiles();
-    } else this->_getLibrary();
+    } else this->_setLibrary();
 
     return true;
 }
@@ -153,7 +153,7 @@ void OpenBookDatabase::_processNewTxtFiles() {
             std::string bookRecordDirectory = LIBRARY_DIR + std::string(fileHash);
 
             if (device->fileExists(bookRecordDirectory.c_str())) {
-                this->Records.push_back(this->getBookRecord(fileHash));
+                this->Records.push_back(this->_getBookRecord(fileHash));
             } else this->Records.push_back(this->_processBookFile(entry, fileHash));
         } entry.close();
     } booksDirectory.close();
@@ -172,7 +172,7 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
     device->makeDirectory(WORKING_DIR);
 
-    for (uint16_t i = 0; i < this->Records.size(); i++) {
+    for (uint16_t i = 0; i < this->getLibrarySize(); i++) {
         std::string tempBookDirectory = WORKING_DIR + std::string(this->Records[i].fileHash);
         std::string libraryBookDirectory = LIBRARY_DIR + std::string(this->Records[i].fileHash);
         if (device->fileExists(libraryBookDirectory.c_str())) {
@@ -208,7 +208,7 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
  *  directory name, constructs the BookRecord and pushes it to the running database vector
  *  of BookRecords
 */
-void OpenBookDatabase::_getLibrary() {
+void OpenBookDatabase::_setLibrary() {
     Logger::DEBUG("No changes to the Library Database detected, loading from disk..."); Logger::LOAD_TEST();
 
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
@@ -218,7 +218,7 @@ void OpenBookDatabase::_getLibrary() {
     while (bookRecord = libraryDirectory.openNextFile()) {
         if (bookRecord.isDirectory()) {
             char bookRecordHash[64]; bookRecord.getName(bookRecordHash, 64);
-            this->Records.push_back(this->getBookRecord(bookRecordHash));
+            this->Records.push_back(this->_getBookRecord(bookRecordHash));
         }
         bookRecord.close();
     } libraryDirectory.close();
@@ -361,8 +361,15 @@ bool OpenBookDatabase::_hasHeader(File entry) {
 /**
  * @return A vector of all the current BookRecords in memory
 */
-std::vector<BookRecord, std::allocator<BookRecord>> OpenBookDatabase::getBookRecords() {
+std::vector<BookRecord> OpenBookDatabase::getLibrary() {
     return this->Records;
+}
+
+/**
+ * @return The number of the current BookRecords in memory
+*/
+uint16_t OpenBookDatabase::getLibrarySize() {
+    return this->Records.size();
 }
 
 /**
@@ -370,20 +377,30 @@ std::vector<BookRecord, std::allocator<BookRecord>> OpenBookDatabase::getBookRec
  * @param page The page you want titles for
  * @return A vector of strings of titles for the provided page
 */
-std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
-    std::vector<std::string> titles;
+std::vector<BookRecord> OpenBookDatabase::getLibraryPage(uint16_t page) {
+    std::vector<BookRecord> bookRecords;
     uint16_t pageStart = LIBRARY_PAGE_SIZE * page;
-    uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, (uint16_t)this->Records.size());
+    uint16_t pageEnd = min(pageStart + LIBRARY_PAGE_SIZE, (uint16_t)this->getLibrarySize());
 
-    for (uint16_t i = pageStart; i < pageEnd; i++) {
-        std::string title = this->getBookTitle(this->Records[i]);
-        std::string author = this->getBookAuthor(this->Records[i]);
-        if (author != "") title += " by " + author;
+    for (uint16_t i = pageStart; i < pageEnd; i++) bookRecords.push_back(this->getLibraryBookRecord(i));
 
-        titles.push_back(title.substr(0, 35));
-    }
+    return bookRecords;
+}
 
-    return titles;
+/**
+ * @param libraryIndex The index position of the book in the library
+ * @return The in memory BookRecord at the provided library index
+*/
+BookRecord OpenBookDatabase::getLibraryBookRecord(uint16_t libraryIndex) {
+    return this->Records.at(libraryIndex);
+}
+
+/**
+ * @param libraryIndex The index position of the book in the library
+ * @param bookRecord The BookRecord object that is replacing the value at the provided library index
+*/
+void OpenBookDatabase::setLibraryBookRecord(uint16_t libraryIndex, BookRecord bookRecord) {
+    this->Records.at(libraryIndex) = bookRecord;
 }
 
 /**
@@ -392,7 +409,7 @@ std::vector<std::string> OpenBookDatabase::getLibraryPage(uint16_t page) {
  * @param fileHash the char array of the hash of a book file, to be used in the directory of the BookRecord
  * @return the BookRecord object for that book's file hash
 */
-BookRecord OpenBookDatabase::getBookRecord(char* fileHash) {
+BookRecord OpenBookDatabase::_getBookRecord(char* fileHash) {
     BookRecord bookRecord;
     std::string bookRecordFilename = LIBRARY_DIR + std::string(fileHash) + BOOK_FILE;
     File bookFile = OpenBookDevice::sharedDevice()->openFile(bookRecordFilename.c_str());

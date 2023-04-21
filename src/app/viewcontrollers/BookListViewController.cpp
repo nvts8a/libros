@@ -5,7 +5,7 @@
 #include <iomanip>
 
 BookListViewController::BookListViewController(std::shared_ptr<Application> application) : ViewController(application) {
-    this->numberOfBooks = OpenBookDatabase::sharedDatabase()->getBookRecords().size();
+    this->numberOfBooks = OpenBookDatabase::sharedDatabase()->getLibrarySize();
     this->numberOfPages = (this->numberOfBooks - 1) / LIBRARY_PAGE_SIZE;
 
     this->_updatePagination();
@@ -13,7 +13,7 @@ BookListViewController::BookListViewController(std::shared_ptr<Application> appl
 
 void BookListViewController::viewWillAppear() {
     ViewController::viewWillAppear();
-    if (this->numberOfBooks > 0) this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
+    if (this->numberOfBooks > 0) this->_updateLibraryPage();
     this->updateBatteryIcon();
 }
 
@@ -51,11 +51,11 @@ void BookListViewController::createView() {
 
 void BookListViewController::selectBook(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        uint16_t bookIndex = (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
-        this->currentBook = OpenBookDatabase::sharedDatabase()->getBookRecords()[bookIndex];
+        this->currentBook = (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        BookRecord currentBookRecord = OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(this->currentBook);
 
-        if (OpenBookDatabase::sharedDatabase()->bookIsPaginated(this->currentBook)) {
-            this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&this->currentBook);
+        if (OpenBookDatabase::sharedDatabase()->bookIsPaginated(currentBookRecord)) {
+            this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&currentBookRecord);
         } else {
             this->modal = std::make_shared<BorderedView>(MakeRect(20, 100, 300 - 20 * 2, 200));
             int16_t subviewWidth = this->modal->getFrame().size.width - 40;
@@ -79,8 +79,8 @@ void BookListViewController::selectBook(Event event) {
 */
 void BookListViewController::viewBookDetails(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        uint16_t    bookIndex =       (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
-        BookRecord  selectedBook =    OpenBookDatabase::sharedDatabase()->getBookRecords()[bookIndex];
+        this->currentBook =          (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        BookRecord  selectedBook =    OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(this->currentBook);
         std::string bookTitle =       OpenBookDatabase::sharedDatabase()->getBookTitle(selectedBook);
         std::string bookAuthor =      OpenBookDatabase::sharedDatabase()->getBookAuthor(selectedBook);
         std::string bookDescription = OpenBookDatabase::sharedDatabase()->getBookDescription(selectedBook);
@@ -134,7 +134,6 @@ void BookListViewController::dismiss(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
         window->removeSubview(this->modal);
         this->modal.reset();
-        this->currentBook = {0};
     }
 }
 
@@ -142,8 +141,10 @@ void BookListViewController::paginate(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
         window->removeSubview(this->modal);
         this->modal.reset();
-        this->currentBook = OpenBookDatabase::sharedDatabase()->paginateBook(this->currentBook);
-        this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&this->currentBook);
+        BookRecord currentBookRecord   = OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(this->currentBook);
+        BookRecord paginatedBookRecord = OpenBookDatabase::sharedDatabase()->paginateBook(currentBookRecord);
+        OpenBookDatabase::sharedDatabase()->setLibraryBookRecord(this->currentBook, paginatedBookRecord);
+        this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&paginatedBookRecord);
     }
 }
 
@@ -187,12 +188,32 @@ void BookListViewController::previousPage(Event event) {
 */
 void BookListViewController::_updateView() {
     // Set current library page table items
-    this->table->setItems(OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage));
+    this->_updateLibraryPage();
 
     // Set pagination label
     this->_updatePagination();
     this->pagination->setText(this->paginationLabel);
     this->pagination->setFrame(MakeRect(this->paginationLabelXPos, 400-40, 90, 8));
+}
+
+/**
+ * Obtains the current page of BookRecords and constructs the string titles for them
+ *  And sets those titles on the table
+*/
+void BookListViewController::_updateLibraryPage() {
+    std::vector<std::string> titles;
+    std::vector<BookRecord> currentPage = OpenBookDatabase::sharedDatabase()->getLibraryPage(this->currentPage);
+
+    for (auto &bookRecord : currentPage) {
+        std::string title = OpenBookDatabase::sharedDatabase()->getBookTitle(bookRecord);
+        std::string author = OpenBookDatabase::sharedDatabase()->getBookAuthor(bookRecord);
+        if (author != "") title += " by " + author;
+
+        titles.push_back(title.substr(0, 35));
+    }
+
+    // Set current library page table items
+    this->table->setItems(titles);
 }
 
 /**

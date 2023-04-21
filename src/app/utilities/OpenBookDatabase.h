@@ -82,9 +82,11 @@ public:
     // Methods for working with the main _LIBRARY file
     bool connect();
     bool scanForNewBooks();
-    std::vector<BookRecord, std::allocator<BookRecord>> getBookRecords();
-    std::vector<std::string> getLibraryPage(uint16_t page);
-    BookRecord getBookRecord(char* fileHash);
+    std::vector<BookRecord> getLibrary();
+    std::vector<BookRecord> getLibraryPage(uint16_t page);
+    uint16_t getLibrarySize();
+    BookRecord getLibraryBookRecord(uint16_t libraryIndex);
+    void setLibraryBookRecord(uint16_t libraryIndex, BookRecord bookRecord);
     std::string getBookTitle(BookRecord record);
     std::string getBookAuthor(BookRecord record);
     std::string getBookDescription(BookRecord record);
@@ -106,11 +108,12 @@ protected:
     void _setLibraryHash(char* libraryHash);
     bool _copyTxtFilesToBookDirectory();
     void _processNewTxtFiles();
-    void _getLibrary();
+    void _setLibrary();
     void _writeNewBookRecordFiles();
     bool _fileIsTxt(File entry);
     void _setFileHash(char* fileHash, File entry);
     bool _hasHeader(File entry);
+    BookRecord _getBookRecord(char* fileHash);
     BookRecord _processBookFile(File entry, char* fileHash);
     std::string _getMetadataAtIndex(BookRecord record, uint16_t i);
     void _getPaginationFilename(BookRecord record, char* paginationFilename);
