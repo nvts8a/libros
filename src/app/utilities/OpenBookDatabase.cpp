@@ -544,22 +544,27 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> OpenBookDatabase::_gene
 
     do {
         // Read in bytes from the book file and convert them with babel
-        char rawBookFileBytes[128] = {0};
-        int byteCountRead = bookFile.read(rawBookFileBytes, 127);
-        BABEL_CODEPOINT babelGlyphBytes[127];
+        char rawBookFileBytes[READ_AMOUNT + 1] = {0};
+        int byteCountRead = bookFile.read(rawBookFileBytes, READ_AMOUNT);
+        BABEL_CODEPOINT babelGlyphBytes[READ_AMOUNT];
         babel->utf8_parse(rawBookFileBytes, babelGlyphBytes);
 
         // If the first character of the babel bytes is a chapter marker, process the chapter details
         if (babelGlyphBytes[0] == CHAPTER_MARK) {
-            bookFile.seekSet(bookFile.position()-127); // Reset the file location, we look for a newline, not a break point
+            bookFile.seekSet(bookFile.position() - byteCountRead); // Reset the file location, we look for a newline, not a break point
             // If the previous page has data, close it out and push it onto the page vector
             if (bookFile.position() > pages.back()) pages.push_back(bookFile.position());
 
-            
             chapters.push_back(pages.size());     // Push the size of the pages vector as the chapter marker, this could happen after but we'd have to subtract 1
             bookFile.find(NEW_LINE);              // Find the end of the chapter title data
             pages.push_back(bookFile.position()); // Push the position read to as the start of the next page
             yPos = 0;                             // Reset page position
+
+        // If there's a Form Feed character at the start of the line, break the page after it by subtracting 1 from what was read in
+        } else if (babelGlyphBytes[0] == PAGE_BREAK) {
+            bookFile.seekSet(bookFile.position()-(byteCountRead - 1));
+            pages.push_back(bookFile.position());
+            yPos = 0;
 
         // ...otherwise process it onto a page
         } else {
@@ -568,34 +573,26 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> OpenBookDatabase::_gene
             size_t bytePosition;
             int16_t breakPosition = babel->word_wrap_position(babelGlyphBytes, byteCountRead, &lineWrapped, &bytePosition, PAGE_WIDTH, 1);
 
-            // If the book isn't at the end...
-            if (bookFile.available()) {
-                // ...and the bytePosition is present, reset the file position to it's length prior to reading...
-                //      (bytePosition prefered but can be empty for long words, cut the last line short, or present for EOF characters)
-                if (bytePosition > 0) bookFile.seekSet(bookFile.position() + (bytePosition-127));
-                // ...or if the breakPosition is present, reset the file position to it's length prior to reading...
-                //       (breakPosition will be the entire line for long unbroken words)
-                else if (breakPosition > 0) bookFile.seekSet(bookFile.position() + (breakPosition-127));
-                // ...or it will be 0 or -1 if the file is empty or only contains control characters, push the rest of the file,
-                //      we can then close the file, causing available() to return false when it otherwise wouldn't
-                else {
-                    pages.push_back(bookFile.size());
-                    bookFile.close();
-                }
+            // If the bytePosition is present, reset the file position to it's length prior to reading...
+            //  (bytePosition is prefered but can be empty for long words, cut the last line short, or present for EOF characters)
+            if (bytePosition > 0) bookFile.seekSet(bookFile.position() + (bytePosition - byteCountRead));
+            // ...or if the breakPosition is present, reset the file position to it's length prior to reading...
+            //   (breakPosition will be the entire line for long unbroken words, however unusual)
+            else if (breakPosition > 0) bookFile.seekSet(bookFile.position() + (breakPosition - byteCountRead));
+            // ...or it will be 0 or -1 if the file is empty or only contains control characters, we can stop processing
+            else break;
 
-                // If the line wraps, as in a paragraph continuing, we provide less white space than if it doesn't and a new paragraph is starting
-                yPos += 16 + 2 + (lineWrapped ? 0 : 8);
-                // If another line would put the page beyond the height of the page, store the position, and reset the page data for a fresh one
-                if (yPos + 16 + 2 > PAGE_HEIGHT) {
-                    pages.push_back(bookFile.position());
-                    yPos = 0;
-                }
-            } else {
-                // If there's page data left over because it wasn't closed out before the end of the file was reached store the end of the file to close the last page
-                 pages.push_back(bookFile.size());
+            // If the line wraps, as in a paragraph continuing, we provide less white space than if it doesn't and a new paragraph is starting
+            yPos += 16 + 2 + (lineWrapped ? 0 : 8);
+            // If another line would put the page beyond the height of the page, store the position, and reset the page data for a fresh one
+            if (yPos + 16 + 2 > PAGE_HEIGHT) {
+                pages.push_back(bookFile.position());
+                yPos = 0;
             }
         }
     } while (bookFile.available());
+
+    pages.push_back(bookFile.size()); // Close out the last page
     bookFile.close(); // Make sure our file is closed
 
     return std::make_tuple(pages, chapters);

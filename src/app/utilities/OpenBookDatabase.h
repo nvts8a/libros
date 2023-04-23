@@ -39,10 +39,12 @@ static const uint16_t INDEX_LANGUAGE    = 4;
 
 // Special characters
 static const char CHAPTER_MARK = 0x1e;
+static const char PAGE_BREAK   = 0x0c;
 static const char NEW_LINE     = 0x0a;
 static const char SPACE        = 0x20;
 
 // Page consts
+static const uint16_t READ_AMOUNT = 127;
 static const uint16_t PAGE_HEIGHT = 384;
 static const uint16_t PAGE_WIDTH  = 288;
 
