@@ -191,7 +191,7 @@ void OpenBookDatabase::_writeNewBookRecordFiles() {
     // Create new Library verion file for the updates
     this->_setLibraryHash(version.libraryHash);
     std::string versionFilename = WORKING_DIR + VERSION_FILE;
-    File versionFile = OpenBookDevice::sharedDevice()->openFile(versionFilename.c_str(), O_TRUNC | O_RDWR);
+    File versionFile = OpenBookDevice::sharedDevice()->openFile(versionFilename.c_str(), O_CREAT | O_RDWR);
     versionFile.write((byte *)&this->version, sizeof(BookDatabaseVersion));
     versionFile.flush(); versionFile.close();
 
