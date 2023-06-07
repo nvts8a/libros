@@ -72,6 +72,7 @@
         "mstd_iterator": "cpp",
         "any": "cpp",
         "variant": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "future": "cpp"
     },
 }

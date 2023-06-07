@@ -4,8 +4,22 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-static const std::string LOG_DEBUG_KEY = "LOG.DEBUG";
-static const std::string LOG_TRUNCATE_KEY = "LOG.TRUNCATE";
+static const std::string CONF_DIR  = "/_OPENBOOK/";
+static const std::string CONF_FILE = "/_OPENBOOK/openbook.conf";
+
+// Nonsense so I can use a switch state with strings
+enum KEY { LogDebug, LogTruncate, InvalidKey };
+static KEY keyValue(arduino::String key) {
+    if (key.compareTo("LOG.DEBUG") == 0)    return KEY::LogDebug;
+    if (key.compareTo("LOG.TRUNCATE") == 0) return KEY::LogTruncate;
+    return KEY::InvalidKey;
+}
+
+// Configuration struct for storing all the types of config nonsense used by the running app
+typedef struct {
+    bool logDebug = false;
+    bool logTruncate = false;
+} Configuration;
 
 class Config {
 public:
@@ -15,7 +29,7 @@ public:
     }
 
     static std::string SOFTWARE_VERSION() {
-        return "v0.8.1";
+        return "v0.8.2"; // SED-BUOY
     }
 
     static bool DEBUG_LOG_LEVEL_ENABLED() {
@@ -30,9 +44,8 @@ protected:
     bool _getLogDebug();
     bool _getLogTruncate();
     void _parseConfigFile();
-
-    bool logDebug = false;
-    bool logTruncate = false;
+    void _setConfiguration(arduino::String key, arduino::String value);
+    Configuration configuration;
 private:
     Config();
 };
