@@ -1,5 +1,5 @@
-#ifndef Focus_h
-#define Focus_h
+#ifndef Ui_h
+#define Ui_h
 
 #include <stdint.h>
 #include <vector>
@@ -7,6 +7,13 @@
 #include <map>
 #include <functional>
 #include "Adafruit_GFX.h"
+
+class Application;
+class Control;
+class Window;
+class View;
+class Task;
+class ViewController;
 
 const int BUTTON_LEFT  = 0;
 const int BUTTON_DOWN  = 1;
@@ -16,6 +23,11 @@ const int BUTTON_TAP   = 4;
 const int BUTTON_PREV  = 5;
 const int BUTTON_NEXT  = 6;
 const int BUTTON_LOCK  = 7;
+
+typedef struct {
+    int32_t type;
+    int32_t userInfo;
+} Event;
 
 typedef struct {
     int16_t x;
@@ -32,31 +44,39 @@ typedef struct {
     Size size;
 } Rect;
 
-inline Point MakePoint(int16_t x, int16_t y) { return {x, y}; }
-inline Size MakeSize(int16_t width, int16_t height) { return {width, height}; }
-inline Rect MakeRect(int16_t x, int16_t y, int16_t width, int16_t height) { return {{x, y}, {width, height}}; }
-
-inline bool PointsEqual(Point a, Point b) { return (a.x == b.x) && (a.y == b.y); }
-inline bool SizesEqual(Size a, Size b) { return (a.width == b.width) && (a.height == b.height); }
-inline bool RectsEqual(Rect a, Rect b) { return PointsEqual(a.origin, b.origin) && SizesEqual(a.size, b.size); }
-
-class Application;
-class Window;
-class View;
-class Task;
-class ViewController;
-
-typedef struct {
-    int32_t type;
-    int32_t userInfo;
-} Event;
+typedef std::function<void(Event)> Action;
 
 typedef enum {
     DirectionalAffinityVertical,
     DirectionalAffinityHorizontal,
 } DirectionalAffinity;
 
-typedef std::function<void(Event)> Action;
+inline Point MakePoint(int16_t x, int16_t y) { return {x, y}; }
+inline Size  MakeSize(int16_t width, int16_t height) { return {width, height}; }
+inline Rect  MakeRect(int16_t x, int16_t y, int16_t width, int16_t height) { return {{x, y}, {width, height}}; }
+
+inline bool PointsEqual(Point a, Point b) { return (a.x == b.x) && (a.y == b.y); }
+inline bool SizesEqual(Size a, Size b) { return (a.width == b.width) && (a.height == b.height); }
+inline bool RectsEqual(Rect a, Rect b) { return PointsEqual(a.origin, b.origin) && SizesEqual(a.size, b.size); }
+
+class Application : public std::enable_shared_from_this<Application> {
+public:
+    Application(int16_t width, int16_t height);
+
+    virtual void setup() = 0;
+    void run();
+
+    void addTask(std::shared_ptr<Task> task);
+    void generateEvent(int32_t eventType, int32_t userInfo);
+    std::shared_ptr<Window> getWindow();
+
+    void setRootViewController(std::shared_ptr<ViewController> viewController);
+
+protected:
+    std::vector<std::shared_ptr<Task>> tasks;
+    std::shared_ptr<Window> window;
+    std::shared_ptr<ViewController> rootViewController;
+};
 
 class Task {
 public:
@@ -129,6 +149,26 @@ protected:
     bool enabled = true;
 };
 
+class ViewController : public std::enable_shared_from_this<ViewController> {
+public:
+    ViewController(std::shared_ptr<Application> application);
+
+    virtual void viewWillAppear();
+    virtual void viewDidAppear() {};
+    virtual void viewWillDisappear() {};
+    virtual void viewDidDisappear();
+
+    void generateEvent(int32_t eventType, int32_t userInfo = 0);
+
+protected:
+    virtual void createView();
+    virtual void destroyView();
+    std::shared_ptr<View> view;
+    std::weak_ptr<Application> application;
+
+    friend class Application;
+};
+
 class Window : public View {
 public:
     Window(Size size);
@@ -153,43 +193,4 @@ protected:
     friend class ViewController;
 };
 
-class Application : public std::enable_shared_from_this<Application> {
-public:
-    Application(const std::shared_ptr<Window>& window);
-
-    virtual void setup() = 0;
-    void run();
-
-    void addTask(std::shared_ptr<Task> task);
-    void generateEvent(int32_t eventType, int32_t userInfo);
-    std::shared_ptr<Window> getWindow();
-
-    void setRootViewController(std::shared_ptr<ViewController> viewController);
-
-protected:
-    std::vector<std::shared_ptr<Task>> tasks;
-    std::shared_ptr<Window> window;
-    std::shared_ptr<ViewController> rootViewController;
-};
-
-class ViewController : public std::enable_shared_from_this<ViewController> {
-public:
-    ViewController(std::shared_ptr<Application> application);
-
-    virtual void viewWillAppear();
-    virtual void viewDidAppear() {};
-    virtual void viewWillDisappear() {};
-    virtual void viewDidDisappear();
-
-    void generateEvent(int32_t eventType, int32_t userInfo = 0);
-
-protected:
-    virtual void createView();
-    virtual void destroyView();
-    std::shared_ptr<View> view;
-    std::weak_ptr<Application> application;
-
-    friend class Application;
-};
-
-#endif // Focus_h
+#endif // Ui_h

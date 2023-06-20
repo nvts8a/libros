@@ -1,15 +1,15 @@
 #ifndef OpenBookApplication_h
 #define OpenBookApplication_h
 
-#include "Focus.h"
+#include "Application.h"
+#include "Widgets.h"
 #include "OpenBookDatabase.h"
-#include "OpenBookWidgets.h"
 #include "BookListViewController.h"
 #include <memory>
 
 class OpenBookApplication : public Application {
 public:
-    OpenBookApplication(const std::shared_ptr<Window>& window) : Application(window) {};
+    OpenBookApplication() : Application(300, 400) {};
 
     void setup() override;
 

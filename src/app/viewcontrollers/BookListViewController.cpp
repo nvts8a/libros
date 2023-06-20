@@ -20,7 +20,7 @@ void BookListViewController::viewWillAppear() {
 void BookListViewController::createView() {
     ViewController::createView();
     this->view = std::make_shared<View>(MakeRect(0, 0, 300, 400));
-    std::shared_ptr<OpenBookLabel> titleLabel = std::make_shared<OpenBookLabel>(MakeRect(28, 8, 200, 16), "My Library");
+    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(28, 8, 200, 16), "My Library");
     std::shared_ptr<BitmapView> shelfIcon = std::make_shared<BitmapView>(MakeRect(9, 9, 16, 16), ShelfIcon);
     titleLabel->setBold(true);
     this->batteryIcon = std::make_shared<BitmapView>(MakeRect(267, 9, 24, 9), BatteryIcon);
@@ -28,7 +28,7 @@ void BookListViewController::createView() {
     this->voltageLabel = std::make_shared<Label>(MakeRect(228, 10, 36, 8), "0.00 V");
     this->batteryIcon->setHidden(true);
     this->usbIcon->setHidden(true);
-    this->table = std::make_shared<OpenBookTable>(MakeRect(0, 32, 300, 400 - 32), 24, CellSelectionStyleIndicatorLeading);
+    this->table = std::make_shared<Table>(MakeRect(0, 32, 300, 400 - 32), 24, CellSelectionStyleIndicatorLeading);
     this->view->addSubview(this->table);
     this->view->addSubview(titleLabel);
     this->view->addSubview(shelfIcon);
@@ -60,12 +60,12 @@ void BookListViewController::selectBook(Event event) {
             this->modal = std::make_shared<BorderedView>(MakeRect(20, 100, 300 - 20 * 2, 200));
             int16_t subviewWidth = this->modal->getFrame().size.width - 40;
             window->addSubview(this->modal);
-            std::shared_ptr<OpenBookLabel> label = std::make_shared<OpenBookLabel>(MakeRect(20, 20, subviewWidth, 32), "This book is not paginated.\nPaginate it now?");
+            std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 32), "This book is not paginated.\nPaginate it now?");
             this->modal->addSubview(label);
-            std::shared_ptr<OpenBookButton> yes = std::make_shared<OpenBookButton>(MakeRect(20, 68, subviewWidth, 48), "Yes");
+            std::shared_ptr<TypesetterButton> yes = std::make_shared<TypesetterButton>(MakeRect(20, 68, subviewWidth, 48), "Yes");
             yes->setAction(std::bind(&BookListViewController::paginate, this, std::placeholders::_1), BUTTON_TAP);
             this->modal->addSubview(yes);
-            std::shared_ptr<OpenBookButton> no = std::make_shared<OpenBookButton>(MakeRect(20, 132, subviewWidth, 48), "No");
+            std::shared_ptr<TypesetterButton> no = std::make_shared<TypesetterButton>(MakeRect(20, 132, subviewWidth, 48), "No");
             no->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
             this->modal->addSubview(no);
             this->modal->becomeFocused();
@@ -89,7 +89,7 @@ void BookListViewController::viewBookDetails(Event event) {
         int16_t subviewWidth = this->modal->getFrame().size.width - 40;
         window->addSubview(this->modal);
 
-        std::shared_ptr<OpenBookLabel> label = std::make_shared<OpenBookLabel>(MakeRect(20, 20, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
+        std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
         this->modal->addSubview(label);
 
         uint16_t lineLength = 37;
@@ -121,7 +121,7 @@ void BookListViewController::viewBookDetails(Event event) {
         std::string closeLabel = "Close";
         int16_t closeXPosition = (this->modal->getFrame().size.width - (closeLabel.length() * 6) - 24) / 2;
         int16_t closeYPosition = this->modal->getFrame().size.height - 32;
-        std::shared_ptr<OpenBookButton> close = std::make_shared<OpenBookButton>(MakeRect(closeXPosition, closeYPosition, 56, 24), closeLabel);
+        std::shared_ptr<TypesetterButton> close = std::make_shared<TypesetterButton>(MakeRect(closeXPosition, closeYPosition, 56, 24), closeLabel);
         close->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
         this->modal->addSubview(close);
 

@@ -1,9 +1,8 @@
 #ifndef FatalErrorViewController_h
 #define FatalErrorViewController_h
 
-#include "Focus.h"
-#include "FocusWidgets.h"
-#include "OpenBookWidgets.h"
+#include "Application.h"
+#include "Widgets.h"
 #include "OpenBookDatabase.h"
 
 class FatalErrorViewController : public ViewController {

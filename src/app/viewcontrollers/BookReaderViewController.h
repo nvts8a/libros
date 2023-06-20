@@ -1,9 +1,8 @@
 #ifndef BookReaderViewController_h
 #define BookReaderViewController_h
 
-#include "Focus.h"
-#include "FocusWidgets.h"
-#include "OpenBookWidgets.h"
+#include "Application.h"
+#include "Widgets.h"
 #include "OpenBookDatabase.h"
 
 const int PROGRESS_BAR_YPOS     = 400 - 4;
@@ -37,11 +36,11 @@ protected:
     std::shared_ptr<Control> eventReceiver;
     std::shared_ptr<ProgressView> progressView;
     std::shared_ptr<Label> progressLabel;
-    std::shared_ptr<OpenBookLabel> bookText;
+    std::shared_ptr<TypesetterLabel> bookText;
 
     std::shared_ptr<Control> modal;
     std::shared_ptr<ProgressView> modalSlider;
-    std::shared_ptr<OpenBookLabel> gotoPageLabel;
+    std::shared_ptr<TypesetterLabel> gotoPageLabel;
 };
 
 #endif // BookReaderViewController_h

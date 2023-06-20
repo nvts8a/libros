@@ -1,9 +1,8 @@
 #ifndef BabelSetupViewController_h
 #define BabelSetupViewController_h
 
-#include "Focus.h"
-#include "FocusWidgets.h"
-#include "OpenBookWidgets.h"
+#include "Application.h"
+#include "Widgets.h"
 
 class BabelSetupViewController : public ViewController {
 public:

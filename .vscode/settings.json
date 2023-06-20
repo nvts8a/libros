@@ -73,6 +73,8 @@
         "any": "cpp",
         "variant": "cpp",
         "csignal": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "application.h": "c",
+        "typesetterlabel": "cpp"
     },
 }

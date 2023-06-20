@@ -18,7 +18,7 @@ void BookReaderViewController::createView() {
     ViewController::createView();
     this->view = std::make_shared<Control>(MakeRect(0, 0, 300, 400));
 
-    this->bookText = std::make_shared<OpenBookLabel>(MakeRect(6, 2, 300 - 12, 800 - 26), "");
+    this->bookText = std::make_shared<TypesetterLabel>(MakeRect(6, 2, 300 - 12, 800 - 26), "");
     this->bookText->setWordWrap(true);
     this->bookText->setLineSpacing(2);
     this->bookText->setParagraphSpacing(8);
@@ -79,14 +79,14 @@ void BookReaderViewController::showMenu(Event event) {
 
     std::string bookTitle = OpenBookDatabase::sharedDatabase()->getBookTitle(this->book);
     std::string bookAuthor = OpenBookDatabase::sharedDatabase()->getBookAuthor(this->book);
-    std::shared_ptr<OpenBookLabel> titleLabel = std::make_shared<OpenBookLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle.append(" by ").append(bookAuthor));
+    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle.append(" by ").append(bookAuthor));
     titleLabel->setBold(true);
     titleLabel->setWordWrap(true);
     this->modal->addSubview(titleLabel);
 
     std::stringstream ss;
     ss << "Go to page " << this->currentPage + 1;
-    this->gotoPageLabel = std::make_shared<OpenBookLabel>(MakeRect(4, 200 - 48, 200 - 8, 16), ss.str());
+    this->gotoPageLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 200 - 48, 200 - 8, 16), ss.str());
     this->gotoPageLabel->setItalic(true);
     this->modal->addSubview(this->gotoPageLabel);
 

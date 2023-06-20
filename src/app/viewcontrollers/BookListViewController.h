@@ -3,9 +3,8 @@
 
 #include <string>
 #include <vector>
-#include "Focus.h"
-#include "FocusWidgets.h"
-#include "OpenBookWidgets.h"
+#include "Application.h"
+#include "Widgets.h"
 #include "OpenBookDatabase.h"
 
 class BookListViewController : public ViewController {
@@ -29,7 +28,7 @@ protected:
     std::string paginationLabel = "No books found";
     int16_t paginationLabelXPos = 108;
 
-    std::shared_ptr<OpenBookTable> table;
+    std::shared_ptr<Table> table;
     std::shared_ptr<BorderedView> modal;
     std::shared_ptr<BitmapView> batteryIcon;
     std::shared_ptr<BitmapView> usbIcon;

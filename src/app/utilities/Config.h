@@ -29,7 +29,7 @@ public:
     }
 
     static std::string SOFTWARE_VERSION() {
-        return "v0.8.2"; // SED-BUOY
+        return "v0.8.3"; // SED-BUOY
     }
 
     static bool DEBUG_LOG_LEVEL_ENABLED() {
