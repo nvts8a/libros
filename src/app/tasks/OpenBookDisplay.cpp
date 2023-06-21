@@ -5,36 +5,32 @@
 
 OpenBookDisplay::OpenBookDisplay() {
     OpenBookDevice::sharedDevice()->startDisplay();
-    display = OpenBookDevice::sharedDevice()->getDisplay();
-    display->setDisplayMode(OPEN_BOOK_DISPLAY_MODE_QUICK);
-    splash();
+    displayDevice = OpenBookDevice::sharedDevice()->getDisplay();
+    displayDevice->setDisplayMode(OPEN_BOOK_DISPLAY_MODE_QUICK);
 }
 
 bool OpenBookDisplay::run(std::shared_ptr<Application> application) {
     OpenBookApplication *myApp = (OpenBookApplication *)application.get();
-
     std::shared_ptr<Window> window = application->getWindow();
+
     if (window->needsDisplay()) {
-        display->clearBuffer();
-        window->draw(display, 0, 0);
+        this->displayDevice->clearBuffer();
+        window->draw(displayDevice, 0, 0);
 
         Rect dirtyRect = window->getDirtyRect();
 
         if (myApp->requestedRefreshMode == OPEN_BOOK_DISPLAY_MODE_DEFAULT || myApp->requestedRefreshMode == OPEN_BOOK_DISPLAY_MODE_QUICK || myApp->requestedRefreshMode == OPEN_BOOK_DISPLAY_MODE_GRAYSCALE) {
-            display->setDisplayMode((OpenBookDisplayMode)myApp->requestedRefreshMode);
+            this->display((OpenBookDisplayMode)myApp->requestedRefreshMode);
             myApp->requestedRefreshMode = -1;
-            display->display();
         } else if (RectsEqual(dirtyRect, window->getFrame())) {
-            display->setDisplayMode(OPEN_BOOK_DISPLAY_MODE_QUICK);
-            display->display();
+            this->display();
         } else {
             if (myApp->requestedRefreshMode == OPEN_BOOK_DISPLAY_MODE_FASTPARTIAL || myApp->requestedRefreshMode == OPEN_BOOK_DISPLAY_MODE_PARTIAL) {
-                display->setDisplayMode((OpenBookDisplayMode)myApp->requestedRefreshMode);
+                this->displayPartial((OpenBookDisplayMode)myApp->requestedRefreshMode, dirtyRect);
                 myApp->requestedRefreshMode = -1;
             } else {
-                display->setDisplayMode(OPEN_BOOK_DISPLAY_MODE_PARTIAL);
+                this->displayPartial(dirtyRect);
             }
-            display->displayPartial(dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
         }
         window->setNeedsDisplay(false);
     }
@@ -42,8 +38,20 @@ bool OpenBookDisplay::run(std::shared_ptr<Application> application) {
     return false;
 }
 
-void OpenBookDisplay::splash() {
-    display->clearBuffer();
-    display->drawBitmap(0, 0, OpenBookSplash, 300, 400, EPD_BLACK);
-    display->display();
+void OpenBookDisplay::display() {
+    this->display(OPEN_BOOK_DISPLAY_MODE_QUICK);
+}
+
+void OpenBookDisplay::display(OpenBookDisplayMode displayMode) {
+    displayDevice->setDisplayMode(displayMode);
+    displayDevice->display();
+}
+
+void OpenBookDisplay::displayPartial(Rect dirtyRect) {
+    this->displayPartial(OPEN_BOOK_DISPLAY_MODE_PARTIAL, dirtyRect);
+}
+
+void OpenBookDisplay::displayPartial(OpenBookDisplayMode displayMode, Rect dirtyRect) {
+    displayDevice->setDisplayMode(displayMode);
+    displayDevice->displayPartial(dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
 }

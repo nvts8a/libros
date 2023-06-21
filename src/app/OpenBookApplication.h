@@ -4,6 +4,8 @@
 #include "Application.h"
 #include "Widgets.h"
 #include "OpenBookDatabase.h"
+#include "OpenBookDisplay.h"
+#include "LoadingViewController.h"
 #include "BookListViewController.h"
 #include <memory>
 
@@ -16,6 +18,8 @@ public:
     bool locked = false;
 
     std::shared_ptr<BookListViewController> mainMenu;
+    std::shared_ptr<LoadingViewController> loadingView;
+    void setLoadingMessage(std::string message);
 
     // Callbacks
     void showLockScreen(Event event);
@@ -24,6 +28,9 @@ public:
     void changeRefreshMode(Event event);
 
     int requestedRefreshMode = -1;
+
+protected:
+    std::shared_ptr<OpenBookDisplay> displayTask;
 };
 
 #endif // OpenBookApplication_h

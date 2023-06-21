@@ -8,9 +8,12 @@ class OpenBookDisplay : public Task {
 public:
     OpenBookDisplay();
     bool run(std::shared_ptr<Application> application);
+    void display();
+    void display(OpenBookDisplayMode displayMode);
+    void displayPartial(Rect dirtyRect);
+    void displayPartial(OpenBookDisplayMode displayMode, Rect dirtyRect);
 protected:
-    void splash();
-    OpenBook_IL0398 *display;
+    OpenBook_IL0398 *displayDevice;
 };
 
 

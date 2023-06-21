@@ -89,11 +89,11 @@ void Logger::_printBanner() {
         this->_log("!!!       !!!  !!!@!!!!  !!@!@!    !@!  !!!   !!@!!! ");
         this->_log("!!:       !!:  !!:  !!!  !!: :!!   !!:  !!!       !:! ");
         this->_log("!:!       :!:  :!:  !:!  :!:  !:!  :!:  !:!      !:! ");
-        this->_log(" :: ::::   ::   :: ::::  ::   :::  ::::: ::  :::: ::    " + Config::SOFTWARE_VERSION());
+        this->_log(" :: ::::   ::   :: ::::  ::   :::  ::::: ::  :::: ::    " + SOFTWARE_VERSION);
         this->_log(": :: : :  : :  :: : ::   : :  : :   : :  :   :: : :     DEBUG MODE");
     } else {
         this->_log(" /./_ __   _");
-        this->_log("///_///_/_\\  " + Config::SOFTWARE_VERSION());
+        this->_log("///_///_/_\\  " + SOFTWARE_VERSION);
     }
     this->_log("");
 }

@@ -16,7 +16,7 @@ elif (( $(which gh | wc --chars) == 0 )) ; then
 fi
 
 # Update release version in config and readme
-CONFIG_VERSION_STRING="        return \"v${1}\"; \/\/ SED-BUOY"
+CONFIG_VERSION_STRING="static const std::string SOFTWARE_VERSION = \"v${1}\"; \/\/ SED-BUOY"
 sed -i -e "s/^.*SED-BUOY.*$/$CONFIG_VERSION_STRING/" src/app/utilities/Config.h
 README_VERSION_STRING="\[!\[release\ badge\ SED-BUOY]\(https:\/\/badgen\.net\/badge\/libros\/v${1}\/green\)]\(https:\/\/github\.com\/nvts8a\/libros\/raw\/main\/releases\/libros-LATEST\.uf2\)"
 sed -i -e "s/^.*SED-BUOY.*$/$README_VERSION_STRING/" README.md

@@ -4,6 +4,7 @@
 #include <string>
 #include "OpenBookDevice.h"
 
+static const std::string SOFTWARE_VERSION = "v0.9.0"; // SED-BUOY
 static const std::string CONF_DIR  = "/_OPENBOOK/";
 static const std::string CONF_FILE = "/_OPENBOOK/openbook.conf";
 
@@ -26,10 +27,6 @@ public:
     static Config *config() {
         static Config instance;
         return &instance;
-    }
-
-    static std::string SOFTWARE_VERSION() {
-        return "v0.8.3"; // SED-BUOY
     }
 
     static bool DEBUG_LOG_LEVEL_ENABLED() {
