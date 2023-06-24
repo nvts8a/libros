@@ -1,5 +1,5 @@
 # libros - The OpenBook Firmware 
-[![release badge SED-BUOY](https://badgen.net/badge/libros/v0.9.0/green)](https://github.com/nvts8a/libros/raw/main/releases/libros-LATEST.uf2)
+[![release badge SED-BUOY](https://badgen.net/badge/libros/v0.9.1/green)](https://github.com/nvts8a/libros/raw/main/releases/libros-LATEST.uf2)
 [![discord badge](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/bwNutkTCRA)
 [![license badge](https://badgen.net/badge/license/MIT/red)](https://github.com/nvts8a/libros/blob/main/LICENSE.md)
 

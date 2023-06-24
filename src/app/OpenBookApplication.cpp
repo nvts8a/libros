@@ -21,7 +21,6 @@ void OpenBookApplication::setup() {
     loadingView = std::make_shared<LoadingViewController>(this->shared_from_this(), "Starting the SD Card service...");
     setRootViewController(this->loadingView);
 
-    setLoadingMessage("Starting the SD Card service");
     if (OpenBookDevice::sharedDevice()->startSD()) {
         Logger::INFO("Started the SD Card service");
     } else {
