@@ -9,6 +9,8 @@
 #include "FatalErrorViewController.h"
 #include "BabelSetupViewController.h"
 
+#include "CoverViewController.h"
+
 void OpenBookApplication::setup() {
     // Tasks needed baseline, even for error scenarios
     bool ready = true;
@@ -78,7 +80,8 @@ void OpenBookApplication::setup() {
 
         setLoadingMessage("Loading Library");
         this->mainMenu = std::make_shared<BookListViewController>(this->shared_from_this());
-        this->setRootViewController(this->mainMenu);
+        //this->setRootViewController(this->mainMenu);
+        this->setRootViewController(std::make_shared<CoverViewController>(this->shared_from_this()));
     }
 }
 
