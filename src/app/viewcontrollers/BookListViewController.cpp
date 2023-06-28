@@ -5,10 +5,11 @@
 #include <iomanip>
 
 BookListViewController::BookListViewController(std::shared_ptr<Application> application) : ViewController(application) {
-    this->numberOfBooks = OpenBookDatabase::sharedDatabase()->getLibrarySize();
-    this->numberOfPages = (this->numberOfBooks - 1) / LIBRARY_PAGE_SIZE;
+    database = OpenBookDatabase::sharedDatabase();
+    numberOfBooks = database->getLibrarySize();
+    numberOfPages = (this->numberOfBooks - 1) / LIBRARY_PAGE_SIZE;
 
-    this->_updatePagination();
+    _updatePagination();
 }
 
 void BookListViewController::viewWillAppear() {
@@ -50,32 +51,51 @@ void BookListViewController::createView() {
 }
 
 void BookListViewController::selectBook(Event event) {
-    if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        this->currentBook = (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
-        BookRecord currentBookRecord = OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(this->currentBook);
+    if (std::shared_ptr<Window>window = view->getWindow().lock()) { 
+        currentBook = (currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        BookRecord currentBookRecord = OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(currentBook);
 
-        if (OpenBookDatabase::sharedDatabase()->bookIsPaginated(currentBookRecord)) {
-            this->generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&currentBookRecord);
-        } else {
-            this->modal = std::make_shared<BorderedView>(MakeRect(20, 100, 300 - 20 * 2, 200));
-            int16_t subviewWidth = this->modal->getFrame().size.width - 40;
-            window->addSubview(this->modal);
-            std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 32), "This book is not paginated.\nPaginate it now?");
-            this->modal->addSubview(label);
-            std::shared_ptr<TypesetterButton> yes = std::make_shared<TypesetterButton>(MakeRect(20, 68, subviewWidth, 48), "Yes");
-            yes->setAction(std::bind(&BookListViewController::paginate, this, std::placeholders::_1), BUTTON_TAP);
-            this->modal->addSubview(yes);
-            std::shared_ptr<TypesetterButton> no = std::make_shared<TypesetterButton>(MakeRect(20, 132, subviewWidth, 48), "No");
-            no->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
-            this->modal->addSubview(no);
-            this->modal->becomeFocused();
-            this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
-        }
+        if (database->bookIsPaginated(currentBookRecord)) {
+            generateEvent(OPEN_BOOK_EVENT_BOOK_SELECTED, (int32_t)&currentBookRecord);
+        } else _createPaginationModal(window, database->getBookTitle(currentBookRecord));
     }
 }
 
 /**
+ * Constructs a modal for asking the user if they would like to paginate an unpaginated book.
+ * TODO: See if one day we can dynamically get the height of the label and just push the buttons down in a dynamic modal view
+ * @param window This is the Window object, locked by the calling method so should be passed in
+ *  as a dependency and not reobtained.
+ * @param bookTitle The string title of the book, used to construct the pagination message. 
+*/
+void BookListViewController::_createPaginationModal(std::shared_ptr<Window> window, std::string bookTitle) {
+    int16_t modalWidth   = 300 - (20 * 2);
+    int16_t subviewWidth = modalWidth - 40;
+    int16_t buttonWidth  = (subviewWidth / 2) - 5;
+    
+    std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 64), bookTitle + " is not paginated.\n\nPaginate it now?");
+    label->setWordWrap(true);
+
+    std::shared_ptr<TypesetterButton> yes = std::make_shared<TypesetterButton>(MakeRect(20, 116, buttonWidth, 32), "Yes");
+    yes->setAction(std::bind(&BookListViewController::paginate, this, std::placeholders::_1), BUTTON_TAP);
+
+    std::shared_ptr<TypesetterButton> no = std::make_shared<TypesetterButton>(MakeRect(20 + buttonWidth + 10, 116, buttonWidth, 32), "No");
+    no->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
+    
+    modal = std::make_shared<BorderedView>(MakeRect(20, 100, modalWidth, 170));
+    modal->setDirectionalAffinity(DirectionalAffinityHorizontal);
+    modal->addSubview(label);
+    modal->addSubview(yes);
+    modal->addSubview(no);
+
+    window->addSubview(modal);
+    modal->becomeFocused();
+    generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
+}
+
+/**
  * TODO: This seems like an awful way to do this but I don't know any better so that means I'm not at fault right?
+ * TODO: You're right past you, this was awful. But you didn't know about TypesetterLabel with wordwrap, see Issue #31
 */
 void BookListViewController::viewBookDetails(Event event) {
     if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {

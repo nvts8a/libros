@@ -20,6 +20,8 @@ public:
     void nextPage(Event event);
     void previousPage(Event event);
 protected:
+    OpenBookDatabase *database;
+
     virtual void createView() override;
     uint16_t numberOfBooks = 0;
     uint16_t numberOfPages = 0;
@@ -35,6 +37,7 @@ protected:
     std::shared_ptr<Label> voltageLabel;
     std::shared_ptr<Label> pagination;
 
+    void _createPaginationModal(std::shared_ptr<Window> window, std::string bookTitle);
     void _updateView();
     void _updateLibraryPage();
     void _updatePagination();
