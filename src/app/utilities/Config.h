@@ -4,7 +4,7 @@
 #include <string>
 #include "OpenBookDevice.h"
 
-static const std::string SOFTWARE_VERSION = "v0.9.2"; // SED-BUOY
+static const std::string SOFTWARE_VERSION = "v0.9.3"; // SED-BUOY
 static const std::string CONF_DIR  = "/_OPENBOOK/";
 static const std::string CONF_FILE = "/_OPENBOOK/openbook.conf";
 

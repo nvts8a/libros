@@ -24,6 +24,10 @@ const int BUTTON_PREV  = 5;
 const int BUTTON_NEXT  = 6;
 const int BUTTON_LOCK  = 7;
 
+const int16_t DEFAULT_HEIGHT  = 400;
+const int16_t DEFAULT_WIDTH   = 300;
+const int16_t DEFAULT_PADDING = 16;
+
 typedef struct {
     int32_t type;
     int32_t userInfo;

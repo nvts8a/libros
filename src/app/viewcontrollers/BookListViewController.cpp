@@ -94,66 +94,47 @@ void BookListViewController::_createPaginationModal(std::shared_ptr<Window> wind
 }
 
 /**
- * TODO: This seems like an awful way to do this but I don't know any better so that means I'm not at fault right?
- * TODO: You're right past you, this was awful. But you didn't know about TypesetterLabel with wordwrap, see Issue #31
+ * Constructs a modal for displaying the current book's description.
+ * @param event Holds the current book number for the current page as .userInfo, though I'm not sure if it shouldbe named that
 */
 void BookListViewController::viewBookDetails(Event event) {
-    if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        this->currentBook =          (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
-        BookRecord  selectedBook =    OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(this->currentBook);
+    if (std::shared_ptr<Window>window = view->getWindow().lock()) {
+        currentBook = (this->currentPage * LIBRARY_PAGE_SIZE) + event.userInfo;
+        BookRecord  selectedBook =    OpenBookDatabase::sharedDatabase()->getLibraryBookRecord(currentBook);
         std::string bookTitle =       OpenBookDatabase::sharedDatabase()->getBookTitle(selectedBook);
         std::string bookAuthor =      OpenBookDatabase::sharedDatabase()->getBookAuthor(selectedBook);
         std::string bookDescription = OpenBookDatabase::sharedDatabase()->getBookDescription(selectedBook);
 
-        this->modal = std::make_shared<BorderedView>(MakeRect(20, 20, 300-20-20, 400-20-20));
-        int16_t subviewWidth = this->modal->getFrame().size.width - 40;
-        window->addSubview(this->modal);
+        modal = std::make_shared<BorderedView>(MakeRect(DEFAULT_PADDING, DEFAULT_PADDING, DEFAULT_WIDTH-(DEFAULT_PADDING*2), DEFAULT_HEIGHT-(DEFAULT_PADDING*2)));
+        int16_t subviewWidth = modal->getFrame().size.width - (DEFAULT_PADDING*2);
+        window->addSubview(modal);
 
-        std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
-        this->modal->addSubview(label);
-
-        uint16_t lineLength = 37;
-        bookDescription = "   " + bookDescription;
-        std::string currentWord = "";
-        std::string currentLine = "";
-        std::vector<std::string> lines;
-
-        for(uint16_t i = 0; i < bookDescription.length(); i++) {
-            if (bookDescription[i] == ' ') {
-                if (currentLine.length() + 1 + currentWord.length() > lineLength) {
-                    lines.push_back(currentLine);
-                    currentLine = currentWord;
-                    currentWord = "";
-                } else {
-                    currentLine = currentLine + ' ' + currentWord;
-                    currentWord = "";
-                }
-            } else {
-                currentWord = currentWord + bookDescription[i];
-            }
-        }
-
-        for (uint16_t i = 0; i < lines.size(); i++) {
-            std::shared_ptr<Label> descriptionLine = std::make_shared<Label>(MakeRect(20, 70 + (i * 10), 40, 200), lines[i]);
-            this->modal->addSubview(descriptionLine);
-        }
+        std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(DEFAULT_PADDING, DEFAULT_PADDING, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
+        label->setBold(true);
+        modal->addSubview(label);
 
         std::string closeLabel = "Close";
-        int16_t closeXPosition = (this->modal->getFrame().size.width - (closeLabel.length() * 6) - 24) / 2;
-        int16_t closeYPosition = this->modal->getFrame().size.height - 32;
+        int16_t closeXPosition = (modal->getFrame().size.width - (closeLabel.length() * 6) - 24) / 2;
+        int16_t closeYPosition = modal->getFrame().size.height - 32;
         std::shared_ptr<TypesetterButton> close = std::make_shared<TypesetterButton>(MakeRect(closeXPosition, closeYPosition, 56, 24), closeLabel);
         close->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
-        this->modal->addSubview(close);
+        modal->addSubview(close);
 
-        this->modal->becomeFocused();
-        this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
+        int16_t descriptinYPosition = label.get()->getFrame().origin.y + label.get()->getFrame().size.height + DEFAULT_PADDING;
+        int16_t descriptionHeight = modal->getFrame().size.height - descriptinYPosition - (modal->getFrame().size.height - closeYPosition) - DEFAULT_PADDING;
+        std::shared_ptr<TypesetterLabel> descriptionLabel = std::make_shared<TypesetterLabel>(MakeRect(DEFAULT_PADDING, 64, subviewWidth, descriptionHeight), "  " + bookDescription);
+        descriptionLabel->setWordWrap(true);
+        modal->addSubview(descriptionLabel);
+
+        modal->becomeFocused();
+        generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_GRAYSCALE);
     }
 }
 
 void BookListViewController::dismiss(Event event) {
-    if (std::shared_ptr<Window>window = this->view->getWindow().lock()) {
-        window->removeSubview(this->modal);
-        this->modal.reset();
+    if (std::shared_ptr<Window>window = view->getWindow().lock()) {
+        window->removeSubview(modal);
+        modal.reset();
     }
 }
 
