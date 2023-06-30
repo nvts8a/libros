@@ -1,0 +1,100 @@
+name: Language Form
+description: Request to add a new language internationalization to the OpenBook
+title: "[Language]: "
+lables: ["enhancement", "language"]
+assigness:
+  - nvts8a
+
+body:
+# Request Details #
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping OpenBook be more language friendly!
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  
+# Common Messages #
+  - type: input
+    id: commom.yes
+    attributes:
+      label: Common 'Yes'
+      description: What's the best word for confirming something?
+      placeholder: "Yes"
+    validations:
+      required: false
+  - type: input
+    id: common.no
+    attributes:
+      label: Common 'No'
+      description: What's the best word for rejecting something?
+      placeholder: "No"
+    validations:
+      required: false
+  - type: input
+    id: common.open
+    attributes:
+      label: Common 'Open'
+      description: What's the best word for opening something, like a book?
+      placeholder: "Open"
+    validations:
+      required: false
+  - type: input
+    id: common.close
+    attributes:
+      label: Common 'Close'
+      description: What's the best word for closing something, like a book?
+      placeholder: "Close" 
+    validations:
+      required: false
+  - type: input
+    id: common.by
+    attributes:
+      label: Common '{BOOK TITLE} by {AUTHOR}'
+      description: What's the best word that refers to the author of a book after the title?
+      placeholder: "{BOOK TITLE} by {AUTHOR}"
+    validations:
+      required: false
+  - type: input
+    id: common.of
+    attributes:
+      label: common '{CURRENT PAGE} of {TOTAL PAGES}'
+      description: What's the best word that refers to the current page you're on in relation to the total number of pages?
+      placeholder: "{CURRENT PAGE} of {TOTAL PAGES}"
+    validations:
+      required: false
+ 
+# BOOK LIST VIEW MESSAGES #
+  - type: input
+    id: booklist.mylibrary
+    attributes:
+      label: Book List View 'My Library'
+      description: What's the best word for a collection of books belonging to you?
+      placeholder: "My Library"
+    validations:
+      required: false
+  - type: input
+    id: booklist.pagination
+    attributes:
+      label: Book List View '{BOOK TITLE} is not paginated. Paginate it now?' 
+      description: What's the best phrase for something not having defined pages, then requesting if the user would like to have that done?
+      placeholder: "{BOOK TITLE} is not paginated. Paginate it now?"
+    validations:
+      required: false
+
+# BOOK READER VIEW MESSAGES #
+  - type: input
+    id: bookreader.gotopage
+    attributes:
+      label: Book Reader View 'Go to page {PAGE NUMBER}'
+      description: What's the best phrase that states, when you confirm, you will go to a specific page?
+      placeholder: "Go to page {PAGE NUMBER}"
+    validations:
+      required: false
+

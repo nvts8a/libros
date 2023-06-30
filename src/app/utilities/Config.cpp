@@ -1,4 +1,6 @@
 #include "Config.h"
+#include "I18n.h"
+#include <algorithm>
 
 Config::Config() {
     OpenBookDevice *device = OpenBookDevice::sharedDevice();
@@ -20,6 +22,14 @@ bool Config::_getLogDebug() {
 */
 bool Config::_getLogTruncate() {
     return this->configuration.logTruncate;
+}
+
+/**
+ * Used to retrieve the current I18N Tag. This should be the teo character primary tag of a IS0 639-1 code
+ * @return A two character lowercase string, IS0 639-1 primary tag, of a major language currently configured
+*/
+arduino::String Config::_getI18nTag() {
+    return this->configuration.i18nTag;
 }
 
 /**
@@ -54,14 +64,15 @@ void Config::_parseConfigFile() {
  * @param value An arduino string representing what the configuration is to be set to
 */
 void Config::_setConfiguration(arduino::String key, arduino::String value) {
-    switch (keyValue(key)) {
-        case (KEY::LogDebug):
-            if (value.toInt() == 1) this->configuration.logDebug = true;
-            break;
-        case (KEY::LogTruncate):
-            if (value.toInt() == 1) this->configuration.logTruncate = true;
-            break;
-        default:
-            break;
+    if (keys.i18nTag == key) {
+        value.toLowerCase();
+        bool supportedLanguage = std::find(LANGUAGES.begin(), LANGUAGES.end(), value) != LANGUAGES.end();
+        if (supportedLanguage) this->configuration.i18nTag = value;
+    }
+    else if (keys.logDebug    == key) {
+        if (value.toInt() == 1) configuration.logDebug = true;
+    }
+    else if (keys.logTruncate == key) {
+        if (value.toInt() == 1) configuration.logTruncate = true;
     }
 }

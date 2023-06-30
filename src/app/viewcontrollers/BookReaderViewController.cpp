@@ -1,5 +1,6 @@
 #include "BookReaderViewController.h"
 #include "OpenBookEvents.h"
+#include "I18n.h"
 #include <sstream>
 
 BookReaderViewController::BookReaderViewController(std::shared_ptr<Application> application, BookRecord book) : ViewController(application) {
@@ -79,13 +80,13 @@ void BookReaderViewController::showMenu(Event event) {
 
     std::string bookTitle = OpenBookDatabase::sharedDatabase()->getBookTitle(this->book);
     std::string bookAuthor = OpenBookDatabase::sharedDatabase()->getBookAuthor(this->book);
-    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle.append(" by ").append(bookAuthor));
+    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle.append(I18n::get().common.by).append(bookAuthor));
     titleLabel->setBold(true);
     titleLabel->setWordWrap(true);
     this->modal->addSubview(titleLabel);
 
     std::stringstream ss;
-    ss << "Go to page " << this->currentPage + 1;
+    ss << I18n::get().bookReader.goToPage << this->currentPage + 1;
     this->gotoPageLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 200 - 48, 200 - 8, 16), ss.str());
     this->gotoPageLabel->setItalic(true);
     this->modal->addSubview(this->gotoPageLabel);
@@ -111,7 +112,7 @@ void BookReaderViewController::handleModal(Event event) {
         case BUTTON_LEFT:
             this->currentPage = max(this->currentPage - 10, 0);
             percentComplete = (float)(this->currentPage) / (float)(this->numPages);
-            ss << "Go to page " << this->currentPage + 1;
+            ss << I18n::get().bookReader.goToPage << this->currentPage + 1;
             this->modalSlider->setProgress(percentComplete);
             this->gotoPageLabel->setText(ss.str());
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_PARTIAL);
@@ -119,7 +120,7 @@ void BookReaderViewController::handleModal(Event event) {
         case BUTTON_RIGHT:
             this->currentPage = min(this->currentPage + 10, this->numPages - 1);
             percentComplete = (float)(this->currentPage) / (float)(this->numPages - 1);
-            ss << "Go to page " << this->currentPage + 1;
+            ss << I18n::get().bookReader.goToPage << this->currentPage + 1;
             this->modalSlider->setProgress(percentComplete);
             this->gotoPageLabel->setText(ss.str());
             this->generateEvent(OPEN_BOOK_EVENT_REQUEST_REFRESH_MODE, OPEN_BOOK_DISPLAY_MODE_PARTIAL);

@@ -1,5 +1,6 @@
 #include "BookListViewController.h"
 #include "OpenBookEvents.h"
+#include "I18n.h"
 #include "bitmaps.h"
 #include <sstream>
 #include <iomanip>
@@ -21,7 +22,7 @@ void BookListViewController::viewWillAppear() {
 void BookListViewController::createView() {
     ViewController::createView();
     this->view = std::make_shared<View>(MakeRect(0, 0, 300, 400));
-    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(28, 8, 200, 16), "My Library");
+    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(28, 8, 200, 16), I18n::get().bookList.myLibrary);
     std::shared_ptr<BitmapView> shelfIcon = std::make_shared<BitmapView>(MakeRect(9, 9, 16, 16), ShelfIcon);
     titleLabel->setBold(true);
     this->batteryIcon = std::make_shared<BitmapView>(MakeRect(267, 9, 24, 9), BatteryIcon);
@@ -73,13 +74,13 @@ void BookListViewController::_createPaginationModal(std::shared_ptr<Window> wind
     int16_t subviewWidth = modalWidth - 40;
     int16_t buttonWidth  = (subviewWidth / 2) - 5;
     
-    std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 64), bookTitle + " is not paginated.\n\nPaginate it now?");
+    std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(20, 20, subviewWidth, 64), bookTitle + I18n::get().bookList.pagination);
     label->setWordWrap(true);
 
-    std::shared_ptr<TypesetterButton> yes = std::make_shared<TypesetterButton>(MakeRect(20, 116, buttonWidth, 32), "Yes");
+    std::shared_ptr<TypesetterButton> yes = std::make_shared<TypesetterButton>(MakeRect(20, 116, buttonWidth, 32), I18n::get().common.yes);
     yes->setAction(std::bind(&BookListViewController::paginate, this, std::placeholders::_1), BUTTON_TAP);
 
-    std::shared_ptr<TypesetterButton> no = std::make_shared<TypesetterButton>(MakeRect(20 + buttonWidth + 10, 116, buttonWidth, 32), "No");
+    std::shared_ptr<TypesetterButton> no = std::make_shared<TypesetterButton>(MakeRect(20 + buttonWidth + 10, 116, buttonWidth, 32), I18n::get().common.no);
     no->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
     
     modal = std::make_shared<BorderedView>(MakeRect(20, 100, modalWidth, 170));
@@ -109,14 +110,14 @@ void BookListViewController::viewBookDetails(Event event) {
         int16_t subviewWidth = modal->getFrame().size.width - (DEFAULT_PADDING*2);
         window->addSubview(modal);
 
-        std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(DEFAULT_PADDING, DEFAULT_PADDING, subviewWidth, 32), bookTitle + "\n  by " + bookAuthor);
+        std::shared_ptr<TypesetterLabel> label = std::make_shared<TypesetterLabel>(MakeRect(DEFAULT_PADDING, DEFAULT_PADDING, subviewWidth, 32), bookTitle + "\n " + I18n::get().common.by + bookAuthor);
         label->setBold(true);
         modal->addSubview(label);
 
-        std::string closeLabel = "Close";
-        int16_t closeXPosition = (modal->getFrame().size.width - (closeLabel.length() * 6) - 24) / 2;
+        int16_t closeWidth     = (I18n::get().common.close.length() * 8) + 16;
+        int16_t closeXPosition = (modal->getFrame().size.width - closeWidth) / 2;
         int16_t closeYPosition = modal->getFrame().size.height - 32;
-        std::shared_ptr<TypesetterButton> close = std::make_shared<TypesetterButton>(MakeRect(closeXPosition, closeYPosition, 56, 24), closeLabel);
+        std::shared_ptr<TypesetterButton> close = std::make_shared<TypesetterButton>(MakeRect(closeXPosition, closeYPosition, closeWidth, 24), I18n::get().common.close);
         close->setAction(std::bind(&BookListViewController::dismiss, this, std::placeholders::_1), BUTTON_TAP);
         modal->addSubview(close);
 
@@ -226,7 +227,7 @@ void BookListViewController::_updatePagination() {
         uint16_t pageEnd = min((pageStart + LIBRARY_PAGE_SIZE - 1), this->numberOfBooks);
         std::string prefix = "   "; if (pageStart > 1)                 prefix = "<< ";
         std::string suffix = "   "; if (pageEnd < this->numberOfBooks) suffix = " >>";
-        this->paginationLabel = prefix + std::to_string(pageStart) + '-' + std::to_string(pageEnd) + " of " + std::to_string(numberOfBooks) + suffix;
+        this->paginationLabel = prefix + std::to_string(pageStart) + '-' + std::to_string(pageEnd) + I18n::get().common.of + std::to_string(numberOfBooks) + suffix;
         this->paginationLabelXPos = 150 - ((this->paginationLabel.length() / 2) * 6);
     }
 }
