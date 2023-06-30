@@ -1,8 +1,8 @@
 name: Language Form
 description: Request to add a new language internationalization to the OpenBook
 title: "[Language]: "
-lables: ["enhancement", "language"]
-assigness:
+labels: ["enhancement", "language"]
+assignees:
   - nvts8a
 
 body:
@@ -22,7 +22,7 @@ body:
   
 # Common Messages #
   - type: input
-    id: commom.yes
+    id: common-yes
     attributes:
       label: Common 'Yes'
       description: What's the best word for confirming something?
@@ -30,7 +30,7 @@ body:
     validations:
       required: false
   - type: input
-    id: common.no
+    id: common-no
     attributes:
       label: Common 'No'
       description: What's the best word for rejecting something?
@@ -38,7 +38,7 @@ body:
     validations:
       required: false
   - type: input
-    id: common.open
+    id: common-open
     attributes:
       label: Common 'Open'
       description: What's the best word for opening something, like a book?
@@ -46,7 +46,7 @@ body:
     validations:
       required: false
   - type: input
-    id: common.close
+    id: common-close
     attributes:
       label: Common 'Close'
       description: What's the best word for closing something, like a book?
@@ -54,7 +54,7 @@ body:
     validations:
       required: false
   - type: input
-    id: common.by
+    id: common-by
     attributes:
       label: Common '{BOOK TITLE} by {AUTHOR}'
       description: What's the best word that refers to the author of a book after the title?
@@ -62,7 +62,7 @@ body:
     validations:
       required: false
   - type: input
-    id: common.of
+    id: common-of
     attributes:
       label: common '{CURRENT PAGE} of {TOTAL PAGES}'
       description: What's the best word that refers to the current page you're on in relation to the total number of pages?
@@ -72,7 +72,7 @@ body:
  
 # BOOK LIST VIEW MESSAGES #
   - type: input
-    id: booklist.mylibrary
+    id: booklist-mylibrary
     attributes:
       label: Book List View 'My Library'
       description: What's the best word for a collection of books belonging to you?
@@ -80,7 +80,7 @@ body:
     validations:
       required: false
   - type: input
-    id: booklist.pagination
+    id: booklist-pagination
     attributes:
       label: Book List View '{BOOK TITLE} is not paginated. Paginate it now?' 
       description: What's the best phrase for something not having defined pages, then requesting if the user would like to have that done?
@@ -90,7 +90,7 @@ body:
 
 # BOOK READER VIEW MESSAGES #
   - type: input
-    id: bookreader.gotopage
+    id: bookreader-gotopage
     attributes:
       label: Book Reader View 'Go to page {PAGE NUMBER}'
       description: What's the best phrase that states, when you confirm, you will go to a specific page?
