@@ -80,7 +80,9 @@ void BookReaderViewController::showMenu(Event event) {
 
     std::string bookTitle = OpenBookDatabase::sharedDatabase()->getBookTitle(this->book);
     std::string bookAuthor = OpenBookDatabase::sharedDatabase()->getBookAuthor(this->book);
-    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle.append(I18n::get().common.by).append(bookAuthor));
+    if (bookAuthor.length() > 0) bookTitle.append(I18n::get().common.by).append(bookAuthor);
+
+    std::shared_ptr<TypesetterLabel> titleLabel = std::make_shared<TypesetterLabel>(MakeRect(4, 4, 200 - 8, 128), bookTitle);
     titleLabel->setBold(true);
     titleLabel->setWordWrap(true);
     this->modal->addSubview(titleLabel);

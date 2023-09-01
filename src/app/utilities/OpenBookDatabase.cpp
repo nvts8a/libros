@@ -574,8 +574,9 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> OpenBookDatabase::_gene
             int16_t breakPosition = babel->word_wrap_position(babelGlyphBytes, byteCountRead, &lineWrapped, &bytePosition, PAGE_WIDTH, 1);
 
             // If the bytePosition is present, reset the file position to it's length prior to reading...
+            //   We add one if the last line is wrapped so we consume the entire page and new pages don't start with a space
             //  (bytePosition is prefered but can be empty for long words, cut the last line short, or present for EOF characters)
-            if (bytePosition > 0) bookFile.seekSet(bookFile.position() + (bytePosition - byteCountRead));
+            if (bytePosition > 0) bookFile.seekSet(bookFile.position() + (bytePosition - byteCountRead) + (lineWrapped ? 1 : 0));
             // ...or if the breakPosition is present, reset the file position to it's length prior to reading...
             //   (breakPosition will be the entire line for long unbroken words, however unusual)
             else if (breakPosition > 0) bookFile.seekSet(bookFile.position() + (breakPosition - byteCountRead));
@@ -586,6 +587,7 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> OpenBookDatabase::_gene
             yPos += 16 + 2 + (lineWrapped ? 0 : 8);
             // If another line would put the page beyond the height of the page, store the position, and reset the page data for a fresh one
             if (yPos + 16 + 2 > PAGE_HEIGHT) {
+                //if (lineWrapped) bookFile.read(); 
                 pages.push_back(bookFile.position());
                 yPos = 0;
             }
